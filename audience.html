@@ -89,27 +89,9 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
 .abtn.off{background:rgba(255,255,255,0.04);border-color:var(--bdr);color:var(--mut);}
 .swbtn{padding:13px 16px;border-radius:13px;border:1px solid var(--bdr);background:var(--card);color:var(--mut);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
 .swbtn:hover{color:var(--txt);border-color:var(--acc);}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:22px;z-index:50;backdrop-filter:blur(8px);}
-.ov.hide{display:none;}
-.ovc{background:var(--card);border:1px solid var(--bdr);border-radius:18px;padding:26px 22px;width:100%;max-width:330px;display:flex;flex-direction:column;gap:14px;}
-.ovc h3{font-size:17px;font-weight:700;}
-.ovc p{font-size:13px;color:var(--mut);line-height:1.5;}
-.ovin{width:100%;background:var(--card2);border:1px solid var(--bdr);border-radius:9px;padding:11px 14px;color:var(--txt);font-family:'Manrope',sans-serif;font-size:14px;outline:none;}
-.ovin:focus{border-color:var(--acc);}
-.ovbtn{width:100%;background:var(--acc);border:none;border-radius:9px;color:#fff;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;padding:13px;cursor:pointer;}
-.ovskip{text-align:center;font-size:13px;color:var(--mut);cursor:pointer;text-decoration:underline;}
 </style>
 </head>
 <body>
-<div class="ov hide" id="elOv">
-  <div class="ovc">
-    <h3>🎧 Enable Voice Audio</h3>
-    <p>Enter your ElevenLabs API key to hear translations spoken through your earphones. Or skip for text-only mode.</p>
-    <input class="ovin" id="elIn" type="password" placeholder="ElevenLabs API key...">
-    <button class="ovbtn" onclick="saveEl()">Enable Audio</button>
-    <div class="ovskip" onclick="skipEl()">Text only — skip</div>
-  </div>
-</div>
 <div class="scr" id="s1">
   <div class="logo">🌐</div>
   <div class="wtitle">Welcome to<br><span>LinguaLive</span></div>
@@ -118,6 +100,7 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
   <div class="spin-w" id="spinW"><div class="spin"></div><span style="font-size:12px">Connecting…</span></div>
   <button class="ctabtn" id="ctaBtn" style="display:none" onclick="goLang()">Choose My Language →</button>
 </div>
+
 <div class="scr hide" id="s2">
   <div class="ptitle">Choose Your Language</div>
   <div class="psub">Translations delivered live to your earphones</div>
@@ -125,6 +108,7 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
   <button class="lbtn ko" onclick="pick('ko')"><div class="lfl">🇰🇷</div><div class="li"><div class="len">Korean</div><div class="lnat">한국어 · Hangul</div><div class="lv">ElevenLabs · Multilingual v2</div></div><div class="larr">›</div></button>
   <button class="lbtn de" onclick="pick('de')"><div class="lfl">🇩🇪</div><div class="li"><div class="len">German</div><div class="lnat">Deutsch · Standard</div><div class="lv">ElevenLabs · Multilingual v2</div></div><div class="larr">›</div></button>
 </div>
+
 <div class="scr hide" id="s3">
   <div class="lbg" id="lbg"></div>
   <div class="lwrap">
@@ -154,38 +138,48 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
     <button class="swbtn" onclick="goLang()">Switch ⌄</button>
   </div>
 </div>
+
 <script>
 const P=new URLSearchParams(window.location.search);
-const SID=P.get('s'),AKEY=P.get('a');
-let lang=null,elKey=localStorage.getItem('ll_el')||'',audioOn=!!elKey;
+const SID=P.get('s');
+let lang=null,elKey='',audioOn=true;
 let ably=null,bch=null,pch=null,curAudio=null,hist=[];
 const voices={zh:'pNInz6obpgDQGcFmaJgB',ko:'ErXwobaYiN019PkySvjV',de:'VR6AewLTigWG4xSOukaG'};
 const lnames={zh:'Mandarin · 普通话',ko:'Korean · 한국어',de:'German · Deutsch'};
 
 function g(id){return document.getElementById(id);}
 
-window.onload=()=>{
+window.onload=async()=>{
   const wr=g('wrow');
   for(let i=0;i<32;i++){const b=document.createElement('div');b.className='wb';b.id='wb'+i;wr.appendChild(b);}
-  if(!SID||!AKEY){g('spinW').innerHTML='<div style="font-size:13px;color:#ff6b6b;text-align:center">⚠ No session found.<br>Please scan the QR code again.</div>';return;}
+  if(!SID){g('spinW').innerHTML='<div style="font-size:13px;color:#ff6b6b;text-align:center">⚠ No session found.<br>Please scan the QR code again.</div>';return;}
   g('sbadge').style.display='block';g('dcode').textContent=SID;
-  connect();
+  await loadConfigAndConnect();
 };
 
-async function connect(){
+async function loadConfigAndConnect(){
   try{
-    ably=new Ably.Realtime({key:decodeURIComponent(AKEY)});
-    await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
-    bch=ably.channels.get('ll-'+SID);
-    pch=ably.channels.get('llp-'+SID);
-    bch.subscribe('start',()=>{g('cdot').classList.add('live');g('ctxt').textContent='Live';});
-    bch.subscribe('end',()=>{g('cdot').classList.remove('live');g('ctxt').textContent='Session ended';});
-    bch.subscribe('t',msg=>lang&&handleT(msg.data));
-    g('spinW').style.display='none';g('ctaBtn').style.display='block';
+    const r=await fetch('/.netlify/functions/config');
+    if(!r.ok) throw new Error('Config failed');
+    const cfg=await r.json();
+    elKey=cfg.elevenKey||'';
+    await connectAbly(cfg.ablyKey);
   }catch(e){
-    g('spinW').innerHTML='<div style="font-size:13px;color:var(--mut);text-align:center">Connection failed.<br>Scan QR code again.</div>';
+    g('spinW').innerHTML='<div style="font-size:13px;color:var(--mut);text-align:center">Connection failed.<br>Please scan QR code again.</div>';
     g('ctaBtn').style.display='block';
   }
+}
+
+async function connectAbly(ablyKey){
+  if(!ablyKey) throw new Error('No Ably key');
+  ably=new Ably.Realtime({key:ablyKey});
+  await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
+  bch=ably.channels.get('ll-'+SID);
+  pch=ably.channels.get('llp-'+SID);
+  bch.subscribe('start',()=>{g('cdot').classList.add('live');g('ctxt').textContent='Live';});
+  bch.subscribe('end',()=>{g('cdot').classList.remove('live');g('ctxt').textContent='Session ended';});
+  bch.subscribe('t',msg=>lang&&handleT(msg.data));
+  g('spinW').style.display='none';g('ctaBtn').style.display='block';
 }
 
 function goLang(){show('s2');}
@@ -194,9 +188,7 @@ function pick(l){
   if(lang&&pch)pch.publish('leave',{lang});
   lang=l;
   if(pch)pch.publish('join',{lang:l});
-  theme(l);
-  if(!elKey)g('elOv').classList.remove('hide');
-  show('s3');updAbtn();
+  theme(l);show('s3');updAbtn();
 }
 
 function theme(l){
@@ -219,7 +211,7 @@ function handleT(msg){
   mt.textContent=txt;mt.dataset.t=txt;
   setTimeout(()=>mt.classList.remove('blink'),900);
   animWave();
-  if(audioOn&&elKey)speakEL(txt,lang,msg.ek);
+  if(audioOn&&elKey)speakEL(txt,lang);
   else if(audioOn)speakBrowser(txt,lang);
 }
 
@@ -238,13 +230,12 @@ function animWave(){
   },60);
 }
 
-async function speakEL(txt,l,hostKey){
-  const key=elKey||(hostKey||'');if(!key)return;
+async function speakEL(txt,l){
   try{
     if(curAudio){curAudio.pause();curAudio=null;}
     const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voices[l]}/stream`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','xi-api-key':key},
+      headers:{'Content-Type':'application/json','xi-api-key':elKey},
       body:JSON.stringify({text:txt,model_id:'eleven_multilingual_v2',voice_settings:{stability:0.5,similarity_boost:0.75}})
     });
     if(!r.ok)throw new Error('EL '+r.status);
@@ -274,14 +265,6 @@ function updAbtn(playing){
   b.className='abtn '+(lang||'off');
   b.textContent=playing?'🔊 Playing…':'🎧 Audio On';
 }
-
-function saveEl(){
-  const v=g('elIn').value.trim();
-  if(v){elKey=v;localStorage.setItem('ll_el',v);audioOn=true;}
-  g('elOv').classList.add('hide');updAbtn();
-}
-
-function skipEl(){audioOn=false;g('elOv').classList.add('hide');updAbtn();}
 
 function show(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('hide',s.id!==id));
