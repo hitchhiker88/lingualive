@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinguaLive</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Instrument Sans',sans-serif;background:#f5f0e8;color:#0f0e0c;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.wrap{text-align:center;padding:40px 24px;max-width:500px;}
+.logo{font-family:'Instrument Serif',serif;font-size:42px;margin-bottom:8px;}
+.logo em{color:#c8410a;font-style:italic;}
+.sub{font-size:15px;color:#8a8070;margin-bottom:48px;line-height:1.5;}
+.cards{display:flex;flex-direction:column;gap:14px;}
+.card{display:block;text-decoration:none;border-radius:10px;padding:22px 28px;border:2px solid;text-align:left;transition:transform 0.15s,box-shadow 0.15s;}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1);}
+.card.host{background:#0f0e0c;border-color:#0f0e0c;color:#f5f0e8;}
+.card.audience{background:#fff;border-color:#d4cabb;color:#0f0e0c;}
+.card-title{font-family:'Instrument Serif',serif;font-size:22px;margin-bottom:4px;}
+.card-sub{font-size:13px;opacity:0.6;}
+.card-arrow{float:right;font-size:22px;margin-top:-2px;opacity:0.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Lingua<em>Live</em></div>
+  <div class="sub">Real-time AI translation for live events.<br>Select your role to get started.</div>
+  <div class="cards">
+    <a class="card host" href="host.html">
+      <span class="card-arrow">→</span>
+      <div class="card-title">🎙 Host Dashboard</div>
+      <div class="card-sub">Presenter controls — start broadcast, view transcript, share QR code</div>
+    </a>
+    <a class="card audience" href="audience.html">
+      <span class="card-arrow">→</span>
+      <div class="card-title">🎧 Audience App</div>
+      <div class="card-sub">Listener view — choose your language and receive live translations</div>
+    </a>
+  </div>
+</div>
+</body>
+</html>
