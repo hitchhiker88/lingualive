@@ -29,19 +29,20 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .card{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .card-head{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--paper2);display:flex;align-items:center;justify-content:space-between;}
 .card-title{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
-.key-row{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--border);}
-.key-row:last-child{border-bottom:none;}
-.key-lbl{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);width:95px;flex-shrink:0;}
-.key-in{flex:1;background:var(--paper2);border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-family:'Instrument Sans',sans-serif;font-size:13px;color:var(--ink);outline:none;}
-.key-in:focus{border-color:var(--accent);}
-.kdot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;}
-.kdot.set{background:var(--green);}
+.status-row{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);}
+.status-row:last-child{border-bottom:none;}
+.status-lbl{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);width:95px;flex-shrink:0;}
+.status-val{flex:1;font-size:13px;color:var(--ink);}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.sdot.ok{background:var(--green);}
+.sdot.err{background:var(--red);}
 .bcast-panel{background:var(--ink);border-radius:8px;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
 .bp-left h2{font-family:'Instrument Serif',serif;font-size:20px;color:var(--paper);margin-bottom:3px;}
 .bp-left p{font-size:13px;color:var(--muted);}
 .big-btn{flex-shrink:0;background:var(--accent);border:none;border-radius:6px;color:#fff;font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;padding:13px 28px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:8px;}
 .big-btn:hover{background:#a33508;transform:translateY(-1px);}
 .big-btn.stop{background:#555;}
+.big-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 .viz{padding:14px 18px;display:flex;align-items:center;gap:3px;height:58px;border-bottom:1px solid var(--border);}
 .vb{width:4px;background:var(--border);border-radius:2px;height:4px;transition:height 0.05s;flex-shrink:0;}
 .vb.on{background:var(--accent);}
@@ -67,7 +68,7 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .stat{display:flex;align-items:center;gap:6px;}
 .snum{font-family:'Instrument Serif',serif;font-size:18px;line-height:1;}
 .slbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.sdot{width:7px;height:7px;border-radius:50%;}
+.sdot2{width:7px;height:7px;border-radius:50%;}
 .dzh{background:var(--zh);}.dko{background:var(--ko);}.dde{background:var(--de);}
 .qr-inner{padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px;}
 #qrcode{padding:10px;background:#fff;border:2px solid var(--ink);border-radius:4px;}
@@ -92,9 +93,20 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .sn{width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:var(--paper);padding:9px 18px;border-radius:4px;font-size:13px;transition:transform 0.3s;z-index:100;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
+.loading-overlay{position:fixed;inset:0;background:rgba(245,240,232,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;}
+.loading-overlay.hide{display:none;}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);}
 </style>
 </head>
 <body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-txt">Loading configuration…</div>
+</div>
+
 <div class="wrap">
 <header>
   <div class="logo">Lingua<em>Live</em> <span style="font-family:'Instrument Sans';font-size:13px;color:var(--muted);font-weight:400;margin-left:8px">Host Dashboard</span></div>
@@ -106,19 +118,22 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 </header>
 <div class="layout">
   <div class="left">
+
     <div class="card">
-      <div class="card-head"><span class="card-title">API Keys</span></div>
-      <div class="key-row"><div class="key-lbl">Anthropic</div><input class="key-in" id="kAnthropic" type="password" placeholder="sk-ant-..."><div class="kdot" id="dAnthropic"></div></div>
-      <div class="key-row"><div class="key-lbl">ElevenLabs</div><input class="key-in" id="kEleven" type="password" placeholder="Your ElevenLabs key..."><div class="kdot" id="dEleven"></div></div>
-      <div class="key-row"><div class="key-lbl">Ably</div><input class="key-in" id="kAbly" type="password" placeholder="Your Ably root key..."><div class="kdot" id="dAbly"></div></div>
+      <div class="card-head"><span class="card-title">System Status</span></div>
+      <div class="status-row"><div class="status-lbl">Translation</div><div class="status-val">Anthropic Claude via server</div><div class="sdot" id="dotTranslate"></div></div>
+      <div class="status-row"><div class="status-lbl">Voice</div><div class="status-val">ElevenLabs Multilingual v2</div><div class="sdot" id="dotEleven"></div></div>
+      <div class="status-row"><div class="status-lbl">Realtime</div><div class="status-val">Ably broadcast channel</div><div class="sdot" id="dotAbly"></div></div>
     </div>
+
     <div class="bcast-panel">
       <div class="bp-left">
         <h2>Broadcast Control</h2>
-        <p id="bcastStatus">Enter API keys above then start broadcasting.</p>
+        <p id="bcastStatus">Loading configuration…</p>
       </div>
-      <button class="big-btn" id="bcastBtn" onclick="toggleBroadcast()"><span id="btnIcon">▶</span><span id="btnTxt">Start Broadcast</span></button>
+      <button class="big-btn" id="bcastBtn" onclick="toggleBroadcast()" disabled><span id="btnIcon">▶</span><span id="btnTxt">Start Broadcast</span></button>
     </div>
+
     <div class="card">
       <div class="card-head"><span class="card-title">Live Transcript · Speaker Diarization</span><span id="spkCount" style="font-size:11px;color:var(--muted)">0 speakers</span></div>
       <div class="viz" id="viz"></div>
@@ -129,13 +144,14 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
         <div class="tcol"><div class="tclbl de">DE · Deutsch</div><div class="tctxt" id="mde">—</div></div>
       </div>
       <div class="lstats">
-        <div class="stat"><div class="sdot dzh"></div><div><div class="snum" id="czh">0</div><div class="slbl">ZH</div></div></div>
-        <div class="stat"><div class="sdot dko"></div><div><div class="snum" id="cko">0</div><div class="slbl">KO</div></div></div>
-        <div class="stat"><div class="sdot dde"></div><div><div class="snum" id="cde">0</div><div class="slbl">DE</div></div></div>
+        <div class="stat"><div class="sdot2 dzh"></div><div><div class="snum" id="czh">0</div><div class="slbl">ZH</div></div></div>
+        <div class="stat"><div class="sdot2 dko"></div><div><div class="snum" id="cko">0</div><div class="slbl">KO</div></div></div>
+        <div class="stat"><div class="sdot2 dde"></div><div><div class="snum" id="cde">0</div><div class="slbl">DE</div></div></div>
         <div class="stat" style="margin-left:auto"><div><div class="snum" id="ctot">0</div><div class="slbl">Listeners</div></div></div>
       </div>
     </div>
   </div>
+
   <div class="right">
     <div class="card">
       <div class="card-head"><span class="card-title">Audience QR Code</span></div>
@@ -147,68 +163,84 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
         <div class="urlbox" id="urlbox" onclick="copyUrl()">Start broadcast to generate link</div>
       </div>
     </div>
+
     <div class="card lbreaks">
       <div class="card-head"><span class="card-title">Audience by Language</span></div>
       <div class="lrow"><div class="lflag">🇨🇳</div><div class="ldet"><div class="lname">Mandarin</div><div class="lbar-w"><div class="lbar bzh" id="bzh"></div></div></div><div class="lcnt" id="lzh">0</div></div>
       <div class="lrow"><div class="lflag">🇰🇷</div><div class="ldet"><div class="lname">Korean</div><div class="lbar-w"><div class="lbar bko" id="bko"></div></div></div><div class="lcnt" id="lko">0</div></div>
       <div class="lrow"><div class="lflag">🇩🇪</div><div class="ldet"><div class="lname">German</div><div class="lbar-w"><div class="lbar bde" id="bde"></div></div></div><div class="lcnt" id="lde">0</div></div>
     </div>
+
     <div class="steps">
       <h3>How to use</h3>
-      <div class="step"><div class="sn">1</div><div>Enter your Anthropic, ElevenLabs and Ably API keys</div></div>
-      <div class="step"><div class="sn">2</div><div>Click Start Broadcast — QR code generates instantly</div></div>
-      <div class="step"><div class="sn">3</div><div>Audience scans QR from any phone anywhere in the world</div></div>
-      <div class="step"><div class="sn">4</div><div>Speak naturally — translations stream to all listeners live</div></div>
-      <div class="step"><div class="sn">5</div><div>Get a free Ably key at ably.com (200 connections free)</div></div>
+      <div class="step"><div class="sn">1</div><div>Click Start Broadcast — QR code generates instantly</div></div>
+      <div class="step"><div class="sn">2</div><div>Show QR code on screen — audience scans with any phone</div></div>
+      <div class="step"><div class="sn">3</div><div>Speak naturally — translations stream live to all listeners</div></div>
+      <div class="step"><div class="sn">4</div><div>Audience hears translation through their earphones automatically</div></div>
     </div>
   </div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
+
 <script>
-let live=false,timer=null,start=null,recog=null,actx=null,anlz=null,mic=null,raf=null;
+let live=false,timerInt=null,start=null,recog=null,actx=null,anlz=null,mic=null,raf=null;
 let ably=null,bch=null,pch=null,hist=[],spkIdx=0,lastSpk=Date.now();
 let lc={zh:0,ko:0,de:0};
+let cfg={ablyKey:'',elevenKey:''};
 const SL=['Speaker A','Speaker B','Speaker C'],SC=['sA','sB','sC'];
-
-document.querySelectorAll('.key-in').forEach(el=>{
-  el.addEventListener('input',()=>{
-    const map={kAnthropic:'dAnthropic',kEleven:'dEleven',kAbly:'dAbly'};
-    document.getElementById(map[el.id]).className='kdot'+(el.value.length>10?' set':'');
-  });
-});
 
 function g(id){return document.getElementById(id);}
 
-window.onload=()=>{
+window.onload=async()=>{
   const v=g('viz');
   for(let i=0;i<60;i++){const b=document.createElement('div');b.className='vb';b.id='vb'+i;v.appendChild(b);}
+  await loadConfig();
 };
+
+async function loadConfig(){
+  try{
+    const r=await fetch('/.netlify/functions/config');
+    if(!r.ok) throw new Error('Config load failed');
+    cfg=await r.json();
+    g('dotTranslate').className='sdot ok';
+    g('dotEleven').className = cfg.elevenKey ? 'sdot ok' : 'sdot err';
+    g('dotAbly').className = cfg.ablyKey ? 'sdot ok' : 'sdot err';
+    g('loadingOverlay').classList.add('hide');
+    g('bcastBtn').disabled=false;
+    g('bcastStatus').textContent='All systems ready — click Start Broadcast';
+  }catch(e){
+    g('loadingOverlay').classList.add('hide');
+    g('bcastStatus').textContent='Config error — check Netlify environment variables';
+    toast('Failed to load config — check environment variables in Netlify');
+  }
+}
 
 async function toggleBroadcast(){live?stop():await go();}
 
 async function go(){
-  const ak=g('kAnthropic').value,abk=g('kAbly').value;
-  if(!ak||ak.length<10){toast('Enter your Anthropic API key');return;}
-  if(!abk||abk.length<10){toast('Enter your Ably API key');return;}
+  if(!cfg.ablyKey){toast('Ably key not configured — add ABLY_KEY to Netlify env vars');return;}
   try{mic=await navigator.mediaDevices.getUserMedia({audio:true});}
   catch(e){toast('Mic access denied — allow microphone in browser settings');return;}
   try{
-    ably=new Ably.Realtime({key:abk});
+    ably=new Ably.Realtime({key:cfg.ablyKey});
     await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
     g('ablyPill').textContent='⬤ Connected';g('ablyPill').className='ably-pill ok';
-  }catch(e){toast('Ably connection failed — check your Ably key');mic.getTracks().forEach(t=>t.stop());return;}
+  }catch(e){toast('Ably connection failed — check ABLY_KEY in Netlify env vars');mic.getTracks().forEach(t=>t.stop());return;}
+
   const code=Math.random().toString(36).substr(2,6).toUpperCase();
   bch=ably.channels.get('ll-'+code);
   pch=ably.channels.get('llp-'+code);
   pch.subscribe('join',m=>{lc[m.data.lang]=(lc[m.data.lang]||0)+1;updL();});
   pch.subscribe('leave',m=>{lc[m.data.lang]=Math.max(0,(lc[m.data.lang]||1)-1);updL();});
-  const aurl=window.location.origin+window.location.pathname.replace(/[^/]*$/,'audience.html')+'?s='+code+'&a='+encodeURIComponent(abk);
+
+  const aurl=window.location.origin+window.location.pathname.replace(/[^/]*$/,'audience.html')+'?s='+code;
   g('scode').textContent=code;
   g('urlbox').textContent=aurl;g('urlbox').dataset.url=aurl;
   g('qrcode').innerHTML='';
   new QRCode(g('qrcode'),{text:aurl,width:180,height:180,colorDark:'#0f0e0c',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-  live=true;start=Date.now();timer=setInterval(updTimer,1000);
+
+  live=true;start=Date.now();timerInt=setInterval(updTimer,1000);
   g('liveBadge').classList.add('on');g('timer').classList.add('on');
   g('bcastBtn').classList.add('stop');g('btnIcon').textContent='■';g('btnTxt').textContent='Stop Broadcast';
   g('bcastStatus').textContent='Broadcasting live · Session: '+code;
@@ -218,7 +250,7 @@ async function go(){
 }
 
 function stop(){
-  live=false;clearInterval(timer);
+  live=false;clearInterval(timerInt);
   g('liveBadge').classList.remove('on');g('timer').classList.remove('on');
   g('bcastBtn').classList.remove('stop');g('btnIcon').textContent='▶';g('btnTxt').textContent='Start Broadcast';
   g('bcastStatus').textContent='Broadcast ended.';
@@ -231,8 +263,7 @@ function stop(){
 function setupAudio(stream){
   actx=new(window.AudioContext||window.webkitAudioContext)();
   anlz=actx.createAnalyser();anlz.fftSize=256;
-  actx.createMediaStreamSource(stream).connect(anlz);
-  drawViz();
+  actx.createMediaStreamSource(stream).connect(anlz);drawViz();
 }
 function drawViz(){
   if(!live)return;raf=requestAnimationFrame(drawViz);
@@ -277,24 +308,19 @@ function addEntry(spk,txt,interim){
 }
 
 async function translate(txt,spk){
-  const ak=g('kAnthropic').value;if(!ak)return;
   ['zh','ko','de'].forEach(l=>{g('m'+l).className='tctxt stream';g('m'+l).textContent='';});
   try{
     const r=await fetch('/.netlify/functions/translate',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:txt,anthropicKey:ak})
+      body:JSON.stringify({text:txt})
     });
     const body=await r.text();
-    if(!r.ok){const e=JSON.parse(body);throw new Error(e.error||'Proxy error '+r.status);}
+    if(!r.ok){const e=JSON.parse(body);throw new Error(e.error||'Error '+r.status);}
     const res=JSON.parse(body.replace(/```json|```/g,'').trim());
     ['zh','ko','de'].forEach(l=>{g('m'+l).className='tctxt';g('m'+l).textContent=res[l]||'';});
-    if(bch)bch.publish('t',{orig:txt,spk:spk.l,tr:res,ek:g('kEleven').value,ts:Date.now()});
+    if(bch)bch.publish('t',{orig:txt,spk:spk.l,tr:res,ts:Date.now()});
   }catch(e){console.error(e);toast('Error: '+e.message);['zh','ko','de'].forEach(l=>g('m'+l).className='tctxt');}
-}
-
-function streamUpd(buf){
-  ['zh','ko','de'].forEach(k=>{const m=buf.match(new RegExp('"'+k+'"\\s*:\\s*"([^"]*)'));if(m)g('m'+k).textContent=m[1];});
 }
 
 function updL(){
@@ -318,7 +344,7 @@ function copyUrl(){
 
 function toast(msg){
   const t=g('toast');t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3500);
+  setTimeout(()=>t.classList.remove('show'),4000);
 }
 </script>
 </body>
