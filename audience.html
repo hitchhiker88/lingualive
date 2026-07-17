@@ -142,8 +142,9 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
 <script>
 const P=new URLSearchParams(window.location.search);
 const SID=P.get('s');
-let lang=null,elKey='',audioOn=true;
+let lang=null,elKey='',audioOn=true,audioUnlocked=false;
 let ably=null,bch=null,pch=null,curAudio=null,hist=[];
+let audioQueue=[];
 const voices={zh:'pNInz6obpgDQGcFmaJgB',ko:'ErXwobaYiN019PkySvjV',de:'VR6AewLTigWG4xSOukaG'};
 const lnames={zh:'Mandarin · 普通话',ko:'Korean · 한국어',de:'German · Deutsch'};
 
@@ -189,6 +190,8 @@ function pick(l){
   lang=l;
   if(pch)pch.publish('join',{lang:l});
   theme(l);show('s3');updAbtn();
+  // Unlock autoplay on iOS/mobile using this tap as the user gesture
+  unlockAudio();
 }
 
 function theme(l){
@@ -230,6 +233,18 @@ function animWave(){
   },60);
 }
 
+function unlockAudio(){
+  if(audioUnlocked)return;
+  // Play a silent buffer to unlock autoplay on iOS Safari
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const buf=ctx.createBuffer(1,1,22050);
+    const src=ctx.createBufferSource();
+    src.buffer=buf;src.connect(ctx.destination);src.start(0);
+    ctx.resume().then(()=>{audioUnlocked=true;console.log('Audio unlocked');});
+  }catch(e){audioUnlocked=true;}
+}
+
 async function speakEL(txt,l){
   try{
     if(curAudio){curAudio.pause();curAudio=null;}
@@ -240,7 +255,13 @@ async function speakEL(txt,l){
     });
     if(!r.ok)throw new Error('EL '+r.status);
     const url=URL.createObjectURL(await r.blob());
-    curAudio=new Audio(url);curAudio.play();
+    curAudio=new Audio(url);
+    curAudio.play().catch(e=>{
+      // If autoplay blocked, retry once on next user interaction
+      console.warn('Autoplay blocked, retrying...',e);
+      const retry=()=>{curAudio&&curAudio.play();document.removeEventListener('touchstart',retry);};
+      document.addEventListener('touchstart',retry,{once:true});
+    });
     updAbtn(true);curAudio.onended=()=>updAbtn(false);
   }catch(e){console.error(e);speakBrowser(txt,l);}
 }
