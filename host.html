@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 <style>
-:root{--ink:#0f0e0c;--paper:#f5f0e8;--paper2:#ede7d9;--accent:#c8410a;--green:#1a6b3c;--border:#d4cabb;--muted:#8a8070;--red:#e03030;--zh:#c8410a;--ko:#7b3fa0;--de:#1a6b3c;}
+:root{--ink:#0f0e0c;--paper:#f5f0e8;--paper2:#ede7d9;--accent:#c8410a;--green:#1a6b3c;--border:#d4cabb;--muted:#8a8070;--red:#e03030;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Instrument Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
 .wrap{max-width:1200px;margin:0 auto;padding:0 28px;}
@@ -24,8 +24,7 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .ably-pill{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(200,65,10,0.1);color:var(--accent);border:1px solid rgba(200,65,10,0.2);font-weight:600;}
 .ably-pill.ok{background:rgba(26,107,60,0.1);color:var(--green);border-color:rgba(26,107,60,0.2);}
 .layout{display:grid;grid-template-columns:1fr 320px;gap:24px;padding:24px 0;}
-.left{display:flex;flex-direction:column;gap:18px;}
-.right{display:flex;flex-direction:column;gap:18px;}
+.left,.right{display:flex;flex-direction:column;gap:18px;}
 .card{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .card-head{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--paper2);display:flex;align-items:center;justify-content:space-between;}
 .card-title{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
@@ -34,8 +33,7 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .status-lbl{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);width:95px;flex-shrink:0;}
 .status-val{flex:1;font-size:13px;color:var(--ink);}
 .sdot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;}
-.sdot.ok{background:var(--green);}
-.sdot.err{background:var(--red);}
+.sdot.ok{background:var(--green);}.sdot.err{background:var(--red);}
 .bcast-panel{background:var(--ink);border-radius:8px;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
 .bp-left h2{font-family:'Instrument Serif',serif;font-size:20px;color:var(--paper);margin-bottom:3px;}
 .bp-left p{font-size:13px;color:var(--muted);}
@@ -46,7 +44,7 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .viz{padding:14px 18px;display:flex;align-items:center;gap:3px;height:58px;border-bottom:1px solid var(--border);}
 .vb{width:4px;background:var(--border);border-radius:2px;height:4px;transition:height 0.05s;flex-shrink:0;}
 .vb.on{background:var(--accent);}
-.feed{max-height:260px;overflow-y:auto;}
+.feed{max-height:220px;overflow-y:auto;}
 .entry{padding:10px 18px;border-bottom:1px solid var(--border);animation:ein 0.3s ease;}
 @keyframes ein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .emeta{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
@@ -57,19 +55,19 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .etime{font-size:11px;color:var(--muted);}
 .etxt{font-size:14px;line-height:1.5;color:var(--ink);}
 .etxt.interim{color:var(--muted);font-style:italic;}
-.tmon{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);}
-.tcol{background:#fff;padding:12px 14px;}
-.tclbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
-.tclbl.zh{color:var(--zh);}.tclbl.ko{color:var(--ko);}.tclbl.de{color:var(--de);}
-.tctxt{font-size:13px;line-height:1.5;color:var(--ink);min-height:36px;}
+.tmon{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);}
+.tmon2{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);}
+.tmon3{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);}
+.tcol{background:#fff;padding:10px 12px;}
+.tclbl{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--muted);}
+.tctxt{font-size:12px;line-height:1.4;color:var(--ink);min-height:28px;}
 .tctxt.stream::after{content:'▍';animation:cur 0.7s infinite;color:var(--accent);}
 @keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
-.lstats{display:flex;gap:14px;padding:12px 18px;border-top:1px solid var(--border);background:var(--paper2);}
-.stat{display:flex;align-items:center;gap:6px;}
-.snum{font-family:'Instrument Serif',serif;font-size:18px;line-height:1;}
-.slbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.sdot2{width:7px;height:7px;border-radius:50%;}
-.dzh{background:var(--zh);}.dko{background:var(--ko);}.dde{background:var(--de);}
+.lstats{display:flex;flex-wrap:wrap;gap:10px;padding:10px 18px;border-top:1px solid var(--border);background:var(--paper2);}
+.stat{display:flex;align-items:center;gap:5px;}
+.snum{font-family:'Instrument Serif',serif;font-size:16px;line-height:1;}
+.slbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.sdot2{width:6px;height:6px;border-radius:50%;background:var(--border);}
 .qr-inner{padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px;}
 #qrcode{padding:10px;background:#fff;border:2px solid var(--ink);border-radius:4px;}
 .scode{font-family:'Instrument Serif',serif;font-size:28px;letter-spacing:7px;color:var(--accent);text-align:center;}
@@ -77,23 +75,33 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 .qsub{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;}
 .urlbox{width:100%;background:var(--paper2);border:1px solid var(--border);border-radius:4px;padding:7px 11px;font-size:11px;color:var(--muted);text-align:center;word-break:break-all;cursor:pointer;transition:border-color 0.2s;}
 .urlbox:hover{border-color:var(--accent);color:var(--ink);}
-.lbreaks{overflow:hidden;}
-.lrow{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);}
+.lrow{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--border);}
 .lrow:last-child{border-bottom:none;}
-.lflag{font-size:20px;}
-.ldet{flex:1;}
-.lname{font-size:13px;font-weight:500;}
+.lflag{font-size:18px;}.ldet{flex:1;}
+.lname{font-size:12px;font-weight:500;}
 .lbar-w{margin-top:3px;height:3px;background:var(--border);border-radius:2px;}
-.lbar{height:3px;border-radius:2px;transition:width 0.5s;width:0%;}
-.bzh{background:var(--zh);}.bko{background:var(--ko);}.bde{background:var(--de);}
-.lcnt{font-family:'Instrument Serif',serif;font-size:20px;}
+.lbar{height:3px;border-radius:2px;transition:width 0.5s;width:0%;background:var(--accent);}
+.lcnt{font-family:'Instrument Serif',serif;font-size:18px;}
 .steps{background:var(--paper2);border:1px solid var(--border);border-radius:8px;padding:16px;}
 .steps h3{font-family:'Instrument Serif',serif;font-size:15px;margin-bottom:9px;}
 .step{display:flex;gap:9px;margin-bottom:7px;font-size:12px;line-height:1.5;}
 .sn{width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:var(--paper);padding:9px 18px;border-radius:4px;font-size:13px;transition:transform 0.3s;z-index:100;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
-.loading-overlay{position:fixed;inset:0;background:rgba(245,240,232,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;}
+/* Password lock screen */
+.lock-screen{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:200;}
+.lock-screen.hide{display:none;}
+.lock-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:40px 36px;width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 8px 40px rgba(0,0,0,0.08);}
+.lock-logo{font-family:'Instrument Serif',serif;font-size:28px;margin-bottom:4px;}
+.lock-logo em{color:var(--accent);font-style:italic;}
+.lock-sub{font-size:13px;color:var(--muted);text-align:center;}
+.lock-input{width:100%;background:var(--paper2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-family:'Instrument Sans',sans-serif;font-size:15px;color:var(--ink);outline:none;text-align:center;letter-spacing:3px;}
+.lock-input:focus{border-color:var(--accent);}
+.lock-btn{width:100%;background:var(--accent);border:none;border-radius:6px;color:#fff;font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;padding:13px;cursor:pointer;transition:background 0.2s;}
+.lock-btn:hover{background:#a33508;}
+.lock-err{font-size:12px;color:var(--red);min-height:16px;}
+/* Loading */
+.loading-overlay{position:fixed;inset:0;background:rgba(245,240,232,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:150;}
 .loading-overlay.hide{display:none;}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -102,12 +110,24 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
+<!-- Password lock screen -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-logo">Lingua<em>Live</em></div>
+    <div class="lock-sub">Host Dashboard — authorised access only</div>
+    <input class="lock-input" id="pwInput" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="lock-btn" onclick="checkPw()">Enter Dashboard</button>
+    <div class="lock-err" id="pwErr"></div>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay hide" id="loadingOverlay">
   <div class="spinner"></div>
   <div class="loading-txt">Loading configuration…</div>
 </div>
 
-<div class="wrap">
+<div class="wrap" id="mainWrap" style="display:none">
 <header>
   <div class="logo">Lingua<em>Live</em> <span style="font-family:'Instrument Sans';font-size:13px;color:var(--muted);font-weight:400;margin-left:8px">Host Dashboard</span></div>
   <div class="hright">
@@ -118,14 +138,12 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 </header>
 <div class="layout">
   <div class="left">
-
     <div class="card">
       <div class="card-head"><span class="card-title">System Status</span></div>
       <div class="status-row"><div class="status-lbl">Translation</div><div class="status-val">Anthropic Claude via server</div><div class="sdot" id="dotTranslate"></div></div>
       <div class="status-row"><div class="status-lbl">Voice</div><div class="status-val">ElevenLabs Multilingual v2</div><div class="sdot" id="dotEleven"></div></div>
       <div class="status-row"><div class="status-lbl">Realtime</div><div class="status-val">Ably broadcast channel</div><div class="sdot" id="dotAbly"></div></div>
     </div>
-
     <div class="bcast-panel">
       <div class="bp-left">
         <h2>Broadcast Control</h2>
@@ -133,25 +151,31 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
       </div>
       <button class="big-btn" id="bcastBtn" onclick="toggleBroadcast()" disabled><span id="btnIcon">▶</span><span id="btnTxt">Start Broadcast</span></button>
     </div>
-
     <div class="card">
       <div class="card-head"><span class="card-title">Live Transcript · Speaker Diarization</span><span id="spkCount" style="font-size:11px;color:var(--muted)">0 speakers</span></div>
       <div class="viz" id="viz"></div>
       <div class="feed" id="feed"><div style="padding:18px;color:var(--muted);font-size:13px;text-align:center" data-ph>Transcript appears here when broadcast starts...</div></div>
       <div class="tmon">
-        <div class="tcol"><div class="tclbl zh">ZH · 普通话</div><div class="tctxt" id="mzh">—</div></div>
-        <div class="tcol"><div class="tclbl ko">KO · 한국어</div><div class="tctxt" id="mko">—</div></div>
-        <div class="tcol"><div class="tclbl de">DE · Deutsch</div><div class="tctxt" id="mde">—</div></div>
+        <div class="tcol"><div class="tclbl">ZH · 普通话</div><div class="tctxt" id="mzh">—</div></div>
+        <div class="tcol"><div class="tclbl">YUE · 粵語</div><div class="tctxt" id="myue">—</div></div>
+        <div class="tcol"><div class="tclbl">KO · 한국어</div><div class="tctxt" id="mko">—</div></div>
+        <div class="tcol"><div class="tclbl">DE · Deutsch</div><div class="tctxt" id="mde">—</div></div>
       </div>
-      <div class="lstats">
-        <div class="stat"><div class="sdot2 dzh"></div><div><div class="snum" id="czh">0</div><div class="slbl">ZH</div></div></div>
-        <div class="stat"><div class="sdot2 dko"></div><div><div class="snum" id="cko">0</div><div class="slbl">KO</div></div></div>
-        <div class="stat"><div class="sdot2 dde"></div><div><div class="snum" id="cde">0</div><div class="slbl">DE</div></div></div>
-        <div class="stat" style="margin-left:auto"><div><div class="snum" id="ctot">0</div><div class="slbl">Listeners</div></div></div>
+      <div class="tmon2">
+        <div class="tcol"><div class="tclbl">ID · Indonesia</div><div class="tctxt" id="mid">—</div></div>
+        <div class="tcol"><div class="tclbl">TL · Filipino</div><div class="tctxt" id="mtl">—</div></div>
+        <div class="tcol"><div class="tclbl">TH · ภาษาไทย</div><div class="tctxt" id="mth">—</div></div>
+        <div class="tcol"><div class="tclbl">KM · ខ្មែរ</div><div class="tctxt" id="mkm">—</div></div>
       </div>
+      <div class="tmon3">
+        <div class="tcol"><div class="tclbl">VI · Tiếng Việt</div><div class="tctxt" id="mvi">—</div></div>
+        <div class="tcol"><div class="tclbl">HI · हिन्दी</div><div class="tctxt" id="mhi">—</div></div>
+        <div class="tcol"><div class="tclbl">RU · Русский</div><div class="tctxt" id="mru">—</div></div>
+        <div class="tcol"><div class="tclbl">UK · Українська</div><div class="tctxt" id="muk">—</div></div>
+      </div>
+      <div class="lstats" id="lstats"></div>
     </div>
   </div>
-
   <div class="right">
     <div class="card">
       <div class="card-head"><span class="card-title">Audience QR Code</span></div>
@@ -163,14 +187,10 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
         <div class="urlbox" id="urlbox" onclick="copyUrl()">Start broadcast to generate link</div>
       </div>
     </div>
-
-    <div class="card lbreaks">
+    <div class="card" id="langBreakdown">
       <div class="card-head"><span class="card-title">Audience by Language</span></div>
-      <div class="lrow"><div class="lflag">🇨🇳</div><div class="ldet"><div class="lname">Mandarin</div><div class="lbar-w"><div class="lbar bzh" id="bzh"></div></div></div><div class="lcnt" id="lzh">0</div></div>
-      <div class="lrow"><div class="lflag">🇰🇷</div><div class="ldet"><div class="lname">Korean</div><div class="lbar-w"><div class="lbar bko" id="bko"></div></div></div><div class="lcnt" id="lko">0</div></div>
-      <div class="lrow"><div class="lflag">🇩🇪</div><div class="ldet"><div class="lname">German</div><div class="lbar-w"><div class="lbar bde" id="bde"></div></div></div><div class="lcnt" id="lde">0</div></div>
+      <div id="langRows"></div>
     </div>
-
     <div class="steps">
       <h3>How to use</h3>
       <div class="step"><div class="sn">1</div><div>Click Start Broadcast — QR code generates instantly</div></div>
@@ -184,49 +204,102 @@ header{border-bottom:2px solid var(--ink);padding:18px 0;display:flex;align-item
 <div class="toast" id="toast"></div>
 
 <script>
+const LANGS={
+  zh:{name:'Mandarin',flag:'🇨🇳'},
+  yue:{name:'Cantonese',flag:'🇭🇰'},
+  ko:{name:'Korean',flag:'🇰🇷'},
+  de:{name:'German',flag:'🇩🇪'},
+  id:{name:'Indonesian',flag:'🇮🇩'},
+  tl:{name:'Filipino',flag:'🇵🇭'},
+  th:{name:'Thai',flag:'🇹🇭'},
+  km:{name:'Khmer',flag:'🇰🇭'},
+  vi:{name:'Vietnamese',flag:'🇻🇳'},
+  hi:{name:'Hindi',flag:'🇮🇳'},
+  ru:{name:'Russian',flag:'🇷🇺'},
+  uk:{name:'Ukrainian',flag:'🇺🇦'}
+};
+
 let live=false,timerInt=null,start=null,recog=null,actx=null,anlz=null,mic=null,raf=null;
 let ably=null,bch=null,pch=null,hist=[],spkIdx=0,lastSpk=Date.now();
-let lc={zh:0,ko:0,de:0};
-let cfg={ablyKey:'',elevenKey:''};
+let lc={};Object.keys(LANGS).forEach(l=>lc[l]=0);
+let cfg={ablyKey:'',elevenKey:'',hostPassword:''};
 const SL=['Speaker A','Speaker B','Speaker C'],SC=['sA','sB','sC'];
 
 function g(id){return document.getElementById(id);}
 
+// Build lang rows in sidebar
+function buildLangRows(){
+  const rows=g('langRows');
+  rows.innerHTML=Object.entries(LANGS).map(([k,v])=>`
+    <div class="lrow">
+      <div class="lflag">${v.flag}</div>
+      <div class="ldet"><div class="lname">${v.name}</div><div class="lbar-w"><div class="lbar" id="bar-${k}"></div></div></div>
+      <div class="lcnt" id="lc-${k}">0</div>
+    </div>`).join('');
+  // Build stats row
+  g('lstats').innerHTML=Object.entries(LANGS).map(([k,v])=>`
+    <div class="stat"><div class="sdot2" style="background:var(--accent)"></div><div><div class="snum" id="cs-${k}">0</div><div class="slbl">${k.toUpperCase()}</div></div></div>`).join('')+
+    `<div class="stat" style="margin-left:auto"><div><div class="snum" id="ctot">0</div><div class="slbl">Total</div></div></div>`;
+}
+
 window.onload=async()=>{
+  buildLangRows();
   const v=g('viz');
   for(let i=0;i<60;i++){const b=document.createElement('div');b.className='vb';b.id='vb'+i;v.appendChild(b);}
-  await loadConfig();
+  // Load config first to get password
+  g('loadingOverlay').classList.remove('hide');
+  try{
+    const r=await fetch('/.netlify/functions/config');
+    if(!r.ok)throw new Error('Config failed');
+    cfg=await r.json();
+  }catch(e){console.error(e);}
+  g('loadingOverlay').classList.add('hide');
+  // Show password screen
+  g('lockScreen').classList.remove('hide');
+  setTimeout(()=>g('pwInput').focus(),100);
 };
+
+async function checkPw(){
+  const entered=g('pwInput').value;
+  if(!cfg.hostPassword){
+    // No password set — warn and allow through
+    g('pwErr').textContent='No HOST_PASSWORD set in Netlify env vars.';
+    return;
+  }
+  if(entered===cfg.hostPassword){
+    g('lockScreen').classList.add('hide');
+    g('mainWrap').style.display='block';
+    await loadConfig();
+  } else {
+    g('pwErr').textContent='Incorrect password. Please try again.';
+    g('pwInput').value='';
+    g('pwInput').focus();
+  }
+}
 
 async function loadConfig(){
   try{
-    const r=await fetch('/.netlify/functions/config');
-    if(!r.ok) throw new Error('Config load failed');
-    cfg=await r.json();
     g('dotTranslate').className='sdot ok';
-    g('dotEleven').className = cfg.elevenKey ? 'sdot ok' : 'sdot err';
-    g('dotAbly').className = cfg.ablyKey ? 'sdot ok' : 'sdot err';
-    g('loadingOverlay').classList.add('hide');
+    g('dotEleven').className=cfg.elevenKey?'sdot ok':'sdot err';
+    g('dotAbly').className=cfg.ablyKey?'sdot ok':'sdot err';
     g('bcastBtn').disabled=false;
     g('bcastStatus').textContent='All systems ready — click Start Broadcast';
   }catch(e){
-    g('loadingOverlay').classList.add('hide');
     g('bcastStatus').textContent='Config error — check Netlify environment variables';
-    toast('Failed to load config — check environment variables in Netlify');
   }
 }
 
 async function toggleBroadcast(){live?stop():await go();}
 
 async function go(){
-  if(!cfg.ablyKey){toast('Ably key not configured — add ABLY_KEY to Netlify env vars');return;}
+  if(!cfg.ablyKey){toast('Ably key not configured');return;}
   try{mic=await navigator.mediaDevices.getUserMedia({audio:true});}
   catch(e){toast('Mic access denied — allow microphone in browser settings');return;}
   try{
     ably=new Ably.Realtime({key:cfg.ablyKey});
     await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
     g('ablyPill').textContent='⬤ Connected';g('ablyPill').className='ably-pill ok';
-  }catch(e){toast('Ably connection failed — check ABLY_KEY in Netlify env vars');mic.getTracks().forEach(t=>t.stop());return;}
+  }catch(e){toast('Ably connection failed');mic.getTracks().forEach(t=>t.stop());return;}
 
   const code=Math.random().toString(36).substr(2,6).toUpperCase();
   bch=ably.channels.get('ll-'+code);
@@ -308,28 +381,36 @@ function addEntry(spk,txt,interim){
 }
 
 async function translate(txt,spk){
-  ['zh','ko','de'].forEach(l=>{g('m'+l).className='tctxt stream';g('m'+l).textContent='';});
+  // Get active listener languages only
+  const activeLangs=Object.keys(lc).filter(l=>lc[l]>0);
+  // If no one connected yet, translate all so host can see output
+  const langsToTranslate=activeLangs.length>0?activeLangs:Object.keys(LANGS);
+  langsToTranslate.forEach(l=>{const el=g('m'+l);if(el){el.className='tctxt stream';el.textContent='';}});
   try{
     const r=await fetch('/.netlify/functions/translate',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:txt})
+      body:JSON.stringify({text:txt,langs:langsToTranslate})
     });
     const body=await r.text();
     if(!r.ok){const e=JSON.parse(body);throw new Error(e.error||'Error '+r.status);}
     const res=JSON.parse(body.replace(/```json|```/g,'').trim());
-    ['zh','ko','de'].forEach(l=>{g('m'+l).className='tctxt';g('m'+l).textContent=res[l]||'';});
+    Object.keys(res).forEach(l=>{const el=g('m'+l);if(el){el.className='tctxt';el.textContent=res[l]||'';}});
     if(bch)bch.publish('t',{orig:txt,spk:spk.l,tr:res,ts:Date.now()});
-  }catch(e){console.error(e);toast('Error: '+e.message);['zh','ko','de'].forEach(l=>g('m'+l).className='tctxt');}
+  }catch(e){console.error(e);toast('Error: '+e.message);Object.keys(LANGS).forEach(l=>{const el=g('m'+l);if(el)el.className='tctxt';});}
 }
 
 function updL(){
-  const tot=lc.zh+lc.ko+lc.de,mx=Math.max(...Object.values(lc),1);
-  ['zh','ko','de'].forEach(l=>{
-    g('c'+l).textContent=lc[l];g('l'+l).textContent=lc[l];
-    g('b'+l).style.width=(lc[l]/mx*100)+'%';
+  const vals=Object.values(lc);
+  const tot=vals.reduce((a,b)=>a+b,0);
+  const mx=Math.max(...vals,1);
+  Object.keys(LANGS).forEach(l=>{
+    const cs=g('cs-'+l),lci=g('lc-'+l),bar=g('bar-'+l);
+    if(cs)cs.textContent=lc[l];
+    if(lci)lci.textContent=lc[l];
+    if(bar)bar.style.width=(lc[l]/mx*100)+'%';
   });
-  g('ctot').textContent=tot;
+  const ct=g('ctot');if(ct)ct.textContent=tot;
 }
 
 function updTimer(){
