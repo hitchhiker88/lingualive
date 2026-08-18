@@ -9,85 +9,75 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 <style>
-:root{--bg:#0d0d14;--card:#15151f;--card2:#1c1c28;--bdr:#2a2a3a;--txt:#f0f0f8;--mut:#5a5a7a;--acc:#4d9eff;--zh-c:#221500;--zh:#ff9f3a;--ko-c:#1d0019;--ko:#e060ff;--de-c:#001d16;--de:#3dffa0;}
+:root{--bg:#0d0d14;--card:#15151f;--card2:#1c1c28;--bdr:#2a2a3a;--txt:#f0f0f8;--mut:#5a5a7a;--acc:#4d9eff;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--txt);overflow:hidden;}
-.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 22px;transition:opacity 0.4s,transform 0.4s;overflow-y:auto;}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;transition:opacity 0.4s,transform 0.4s;overflow-y:auto;}
 .scr.hide{opacity:0;pointer-events:none;transform:translateY(20px);}
-#s1{gap:22px;}
-.logo{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,var(--acc),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 0 36px rgba(77,158,255,0.3);animation:fl 3s ease-in-out infinite;}
+/* Welcome */
+#s1{gap:20px;}
+.logo{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--acc),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 32px rgba(77,158,255,0.3);animation:fl 3s ease-in-out infinite;}
 @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-.wtitle{font-size:30px;font-weight:800;letter-spacing:-1px;text-align:center;line-height:1.1;}
+.wtitle{font-size:28px;font-weight:800;letter-spacing:-1px;text-align:center;line-height:1.1;}
 .wtitle span{color:var(--acc);}
-.wsub{font-size:14px;color:var(--mut);text-align:center;line-height:1.6;max-width:270px;}
-.sbadge{background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:12px 18px;text-align:center;width:100%;max-width:290px;}
+.wsub{font-size:13px;color:var(--mut);text-align:center;line-height:1.6;max-width:260px;}
+.sbadge{background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:11px 16px;text-align:center;width:100%;max-width:280px;}
 .sbadge label{display:block;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:3px;}
-.sbadge .code{font-size:22px;font-weight:700;letter-spacing:4px;color:var(--acc);}
-.spin-w{display:flex;flex-direction:column;align-items:center;gap:9px;color:var(--mut);}
-.spin{width:26px;height:26px;border:2px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;}
+.sbadge .code{font-size:20px;font-weight:700;letter-spacing:4px;color:var(--acc);}
+.spin-w{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--mut);}
+.spin{width:24px;height:24px;border:2px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;}
 @keyframes sp{to{transform:rotate(360deg)}}
-.ctabtn{width:100%;max-width:320px;background:var(--acc);border:none;border-radius:13px;color:#fff;font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;padding:16px;cursor:pointer;box-shadow:0 8px 28px rgba(77,158,255,0.28);transition:opacity 0.2s;}
+.ctabtn{width:100%;max-width:300px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;padding:14px;cursor:pointer;box-shadow:0 8px 24px rgba(77,158,255,0.28);transition:opacity 0.2s;}
 .ctabtn:hover{opacity:0.9;}
-#s2{gap:16px;padding-top:56px;justify-content:flex-start;}
-.ptitle{font-size:21px;font-weight:700;text-align:center;}
-.psub{font-size:13px;color:var(--mut);text-align:center;margin-bottom:2px;}
-.lbtn{width:100%;max-width:350px;border-radius:16px;border:1px solid transparent;padding:20px 22px;cursor:pointer;display:flex;align-items:center;gap:16px;transition:transform 0.15s;text-align:left;}
+/* Lang picker */
+#s2{gap:0;padding-top:40px;justify-content:flex-start;}
+.pick-header{width:100%;max-width:400px;padding:0 0 16px;}
+.ptitle{font-size:20px;font-weight:700;text-align:center;}
+.psub{font-size:12px;color:var(--mut);text-align:center;margin-top:4px;}
+.lang-grid{width:100%;max-width:400px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-bottom:20px;}
+.lbtn{width:100%;border-radius:14px;border:1px solid rgba(255,255,255,0.08);padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:transform 0.15s,border-color 0.2s;text-align:left;background:rgba(255,255,255,0.04);}
 .lbtn:active{transform:scale(0.97);}
-.lbtn.zh{background:var(--zh-c);border-color:rgba(255,159,58,0.25);}
-.lbtn.ko{background:var(--ko-c);border-color:rgba(224,96,255,0.25);}
-.lbtn.de{background:var(--de-c);border-color:rgba(61,255,160,0.25);}
-.lfl{font-size:36px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));}
+.lbtn:hover{border-color:rgba(255,255,255,0.2);}
+.lfl{font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));}
 .li{flex:1;}
-.len{font-size:17px;font-weight:700;}
-.lnat{font-size:12px;margin-top:2px;opacity:0.55;}
-.lv{font-size:11px;margin-top:5px;opacity:0.4;}
-.lbtn.zh .len{color:var(--zh);}.lbtn.ko .len{color:var(--ko);}.lbtn.de .len{color:var(--de);}
-.larr{font-size:17px;opacity:0.22;}
+.len{font-size:15px;font-weight:700;color:var(--txt);}
+.lnat{font-size:11px;margin-top:1px;opacity:0.5;color:var(--txt);}
+.larr{font-size:16px;opacity:0.2;color:var(--txt);}
+/* Listening */
 #s3{padding:0;justify-content:flex-start;overflow-y:auto;}
 .lbg{position:fixed;inset:0;transition:background 0.5s;z-index:0;}
-.lwrap{position:relative;z-index:1;width:100%;min-height:100%;display:flex;flex-direction:column;padding-bottom:96px;}
-.topbar{padding:50px 22px 12px;display:flex;align-items:center;justify-content:space-between;}
-.lchip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid;font-size:11px;font-weight:700;}
-.lchip.zh{background:rgba(255,159,58,0.1);border-color:rgba(255,159,58,0.3);color:var(--zh);}
-.lchip.ko{background:rgba(224,96,255,0.1);border-color:rgba(224,96,255,0.3);color:var(--ko);}
-.lchip.de{background:rgba(61,255,160,0.1);border-color:rgba(61,255,160,0.3);color:var(--de);}
+.lwrap{position:relative;z-index:1;width:100%;min-height:100%;display:flex;flex-direction:column;padding-bottom:90px;}
+.topbar{padding:48px 20px 12px;display:flex;align-items:center;justify-content:space-between;}
+.lchip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.15);font-size:11px;font-weight:700;color:var(--txt);background:rgba(255,255,255,0.07);}
 .crow{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mut);}
 .cdot{width:6px;height:6px;border-radius:50%;background:var(--mut);}
 .cdot.live{background:#3dffa0;box-shadow:0 0 7px #3dffa0;animation:gl 2s infinite;}
 @keyframes gl{0%,100%{opacity:1}50%{opacity:0.5}}
-.wrow{padding:14px 22px;display:flex;align-items:center;justify-content:center;gap:4px;height:68px;opacity:0.35;transition:opacity 0.3s;}
+.wrow{padding:12px 20px;display:flex;align-items:center;justify-content:center;gap:4px;height:60px;opacity:0.35;transition:opacity 0.3s;}
 .wrow.act{opacity:1;}
 .wb{width:4px;border-radius:2px;background:var(--acc);height:4px;transition:height 0.1s ease;}
-.tarea{padding:0 22px;flex:1;}
-.ccard{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:22px;margin-bottom:12px;min-height:100px;transition:border-color 0.3s;}
-.ccard.zh{border-color:rgba(255,159,58,0.25);background:rgba(255,159,58,0.04);}
-.ccard.ko{border-color:rgba(224,96,255,0.25);background:rgba(224,96,255,0.04);}
-.ccard.de{border-color:rgba(61,255,160,0.25);background:rgba(61,255,160,0.04);}
-.clbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:10px;}
-.mtxt{font-size:21px;font-weight:500;line-height:1.5;min-height:44px;}
-.mtxt.zh{font-size:23px;line-height:1.6;}
-.blink::after{content:'▍';animation:bc 0.7s infinite;font-size:17px;vertical-align:middle;}
-.blink.zh::after{color:var(--zh);}.blink.ko::after{color:var(--ko);}.blink.de::after{color:var(--de);}
+.tarea{padding:0 20px;flex:1;}
+.ccard{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:11px;min-height:90px;transition:border-color 0.3s;}
+.ccard.active{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);}
+.clbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:9px;}
+.mtxt{font-size:20px;font-weight:500;line-height:1.5;min-height:40px;}
+.blink::after{content:'▍';animation:bc 0.7s infinite;font-size:16px;vertical-align:middle;color:var(--acc);}
 @keyframes bc{0%,100%{opacity:1}50%{opacity:0}}
-.ocard{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:13px 16px;margin-bottom:11px;}
+.ocard{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:11px;padding:12px 15px;margin-bottom:10px;}
 .olbl{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:4px;}
 .otxt{font-size:13px;color:rgba(255,255,255,0.35);line-height:1.5;}
-.schip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);border-radius:999px;padding:3px 9px;font-size:11px;color:var(--mut);margin-bottom:12px;}
+.schip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.07);border-radius:999px;padding:3px 9px;font-size:11px;color:var(--mut);margin-bottom:11px;}
 .sdot2{width:5px;height:5px;border-radius:50%;background:var(--acc);}
-.harea{padding:0 22px;}
-.hlbl{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:9px;}
-.hitem{background:rgba(255,255,255,0.03);border-radius:10px;padding:11px 14px;margin-bottom:7px;border-left:2px solid transparent;}
-.hitem.zh{border-left-color:var(--zh);}.hitem.ko{border-left-color:var(--ko);}.hitem.de{border-left-color:var(--de);}
+.harea{padding:0 20px;}
+.hlbl{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:8px;}
+.hitem{background:rgba(255,255,255,0.03);border-radius:9px;padding:10px 13px;margin-bottom:7px;border-left:2px solid rgba(255,255,255,0.1);}
 .ht{font-size:13px;line-height:1.5;margin-bottom:3px;}
 .ho{font-size:12px;color:var(--mut);}
 .htm{font-size:10px;color:var(--bdr);margin-top:2px;}
-.bbar{position:fixed;bottom:0;left:0;right:0;padding:13px 22px 28px;background:linear-gradient(to top,var(--bg) 60%,transparent);display:flex;align-items:center;gap:11px;z-index:10;}
-.abtn{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;padding:13px;border-radius:13px;border:1px solid;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-.abtn.zh{background:rgba(255,159,58,0.1);border-color:rgba(255,159,58,0.25);color:var(--zh);}
-.abtn.ko{background:rgba(224,96,255,0.1);border-color:rgba(224,96,255,0.25);color:var(--ko);}
-.abtn.de{background:rgba(61,255,160,0.1);border-color:rgba(61,255,160,0.25);color:var(--de);}
-.abtn.off{background:rgba(255,255,255,0.04);border-color:var(--bdr);color:var(--mut);}
-.swbtn{padding:13px 16px;border-radius:13px;border:1px solid var(--bdr);background:var(--card);color:var(--mut);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.bbar{position:fixed;bottom:0;left:0;right:0;padding:12px 20px 26px;background:linear-gradient(to top,var(--bg) 60%,transparent);display:flex;align-items:center;gap:10px;z-index:10;}
+.abtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;color:var(--txt);transition:all 0.2s;}
+.abtn.off{opacity:0.5;}
+.swbtn{padding:12px 15px;border-radius:12px;border:1px solid var(--bdr);background:var(--card);color:var(--mut);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
 .swbtn:hover{color:var(--txt);border-color:var(--acc);}
 </style>
 </head>
@@ -102,11 +92,11 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
 </div>
 
 <div class="scr hide" id="s2">
-  <div class="ptitle">Choose Your Language</div>
-  <div class="psub">Translations delivered live to your earphones</div>
-  <button class="lbtn zh" onclick="pick('zh')"><div class="lfl">🇨🇳</div><div class="li"><div class="len">Mandarin</div><div class="lnat">普通话 · Chinese Simplified</div><div class="lv">ElevenLabs · Multilingual v2</div></div><div class="larr">›</div></button>
-  <button class="lbtn ko" onclick="pick('ko')"><div class="lfl">🇰🇷</div><div class="li"><div class="len">Korean</div><div class="lnat">한국어 · Hangul</div><div class="lv">ElevenLabs · Multilingual v2</div></div><div class="larr">›</div></button>
-  <button class="lbtn de" onclick="pick('de')"><div class="lfl">🇩🇪</div><div class="li"><div class="len">German</div><div class="lnat">Deutsch · Standard</div><div class="lv">ElevenLabs · Multilingual v2</div></div><div class="larr">›</div></button>
+  <div class="pick-header">
+    <div class="ptitle">Choose Your Language</div>
+    <div class="psub">Translations delivered live to your earphones</div>
+  </div>
+  <div class="lang-grid" id="langGrid"></div>
 </div>
 
 <div class="scr hide" id="s3">
@@ -134,23 +124,46 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
     </div>
   </div>
   <div class="bbar">
-    <button class="abtn off" id="abtn" onclick="togAudio()">🎧 Audio On</button>
+    <button class="abtn" id="abtn" onclick="togAudio()">🎧 Audio On</button>
     <button class="swbtn" onclick="goLang()">Switch ⌄</button>
   </div>
 </div>
 
 <script>
+const LANGS={
+  zh:{name:'Mandarin',native:'普通话',flag:'🇨🇳',voice:'pNInz6obpgDQGcFmaJgB',bcp:'zh-CN'},
+  yue:{name:'Cantonese',native:'粵語',flag:'🇭🇰',voice:'pNInz6obpgDQGcFmaJgB',bcp:'zh-HK'},
+  ko:{name:'Korean',native:'한국어',flag:'🇰🇷',voice:'ErXwobaYiN019PkySvjV',bcp:'ko-KR'},
+  de:{name:'German',native:'Deutsch',flag:'🇩🇪',voice:'VR6AewLTigWG4xSOukaG',bcp:'de-DE'},
+  id:{name:'Indonesian',native:'Bahasa Indonesia',flag:'🇮🇩',voice:'pNInz6obpgDQGcFmaJgB',bcp:'id-ID'},
+  tl:{name:'Filipino',native:'Tagalog',flag:'🇵🇭',voice:'pNInz6obpgDQGcFmaJgB',bcp:'fil-PH'},
+  th:{name:'Thai',native:'ภาษาไทย',flag:'🇹🇭',voice:'pNInz6obpgDQGcFmaJgB',bcp:'th-TH'},
+  km:{name:'Khmer',native:'ខ្មែរ',flag:'🇰🇭',voice:'pNInz6obpgDQGcFmaJgB',bcp:'km-KH'},
+  vi:{name:'Vietnamese',native:'Tiếng Việt',flag:'🇻🇳',voice:'pNInz6obpgDQGcFmaJgB',bcp:'vi-VN'},
+  hi:{name:'Hindi',native:'हिन्दी',flag:'🇮🇳',voice:'pNInz6obpgDQGcFmaJgB',bcp:'hi-IN'},
+  ru:{name:'Russian',native:'Русский',flag:'🇷🇺',voice:'VR6AewLTigWG4xSOukaG',bcp:'ru-RU'},
+  uk:{name:'Ukrainian',native:'Українська',flag:'🇺🇦',voice:'pNInz6obpgDQGcFmaJgB',bcp:'uk-UA'}
+};
+
 const P=new URLSearchParams(window.location.search);
 const SID=P.get('s');
 let lang=null,elKey='',audioOn=true,audioUnlocked=false;
 let ably=null,bch=null,pch=null,curAudio=null,hist=[];
-let audioQueue=[];
-const voices={zh:'pNInz6obpgDQGcFmaJgB',ko:'ErXwobaYiN019PkySvjV',de:'VR6AewLTigWG4xSOukaG'};
-const lnames={zh:'Mandarin · 普通话',ko:'Korean · 한국어',de:'German · Deutsch'};
 
 function g(id){return document.getElementById(id);}
 
+// Build language grid
+function buildGrid(){
+  g('langGrid').innerHTML=Object.entries(LANGS).map(([k,v])=>`
+    <button class="lbtn" onclick="pick('${k}')">
+      <div class="lfl">${v.flag}</div>
+      <div class="li"><div class="len">${v.name}</div><div class="lnat">${v.native}</div></div>
+      <div class="larr">›</div>
+    </button>`).join('');
+}
+
 window.onload=async()=>{
+  buildGrid();
   const wr=g('wrow');
   for(let i=0;i<32;i++){const b=document.createElement('div');b.className='wb';b.id='wb'+i;wr.appendChild(b);}
   if(!SID){g('spinW').innerHTML='<div style="font-size:13px;color:#ff6b6b;text-align:center">⚠ No session found.<br>Please scan the QR code again.</div>';return;}
@@ -161,7 +174,7 @@ window.onload=async()=>{
 async function loadConfigAndConnect(){
   try{
     const r=await fetch('/.netlify/functions/config');
-    if(!r.ok) throw new Error('Config failed');
+    if(!r.ok)throw new Error('Config failed');
     const cfg=await r.json();
     elKey=cfg.elevenKey||'';
     await connectAbly(cfg.ablyKey);
@@ -172,7 +185,7 @@ async function loadConfigAndConnect(){
 }
 
 async function connectAbly(ablyKey){
-  if(!ablyKey) throw new Error('No Ably key');
+  if(!ablyKey)throw new Error('No Ably key');
   ably=new Ably.Realtime({key:ablyKey});
   await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
   bch=ably.channels.get('ll-'+SID);
@@ -190,16 +203,14 @@ function pick(l){
   lang=l;
   if(pch)pch.publish('join',{lang:l});
   theme(l);show('s3');updAbtn();
-  // Unlock autoplay on iOS/mobile using this tap as the user gesture
   unlockAudio();
 }
 
 function theme(l){
-  const bgs={zh:'radial-gradient(ellipse at 20% 20%,rgba(255,159,58,0.07),transparent 60%)',ko:'radial-gradient(ellipse at 20% 20%,rgba(224,96,255,0.07),transparent 60%)',de:'radial-gradient(ellipse at 20% 20%,rgba(61,255,160,0.07),transparent 60%)'};
-  g('lbg').style.background=bgs[l];
-  const chip=g('lchip');chip.className='lchip '+l;chip.textContent=lnames[l];
-  const acc={zh:'var(--zh)',ko:'var(--ko)',de:'var(--de)'};
-  document.querySelectorAll('.wb').forEach(b=>b.style.background=acc[l]);
+  const v=LANGS[l];
+  g('lbg').style.background='radial-gradient(ellipse at 20% 20%,rgba(77,158,255,0.06),transparent 60%)';
+  const chip=g('lchip');chip.textContent=v.flag+' '+v.name;
+  document.querySelectorAll('.wb').forEach(b=>b.style.background='var(--acc)');
 }
 
 function handleT(msg){
@@ -208,9 +219,9 @@ function handleT(msg){
   if(prev&&!prev.includes('Waiting'))addHist(prev,msg.orig||'');
   if(msg.spk){g('schip').style.display='inline-flex';g('sname').textContent=msg.spk;}
   g('ocard').style.display='block';g('otxt').textContent=msg.orig||'';
-  const card=g('ccard');card.className='ccard '+lang;
+  const card=g('ccard');card.className='ccard active';
   const mt=g('mtxt');
-  mt.className='mtxt blink'+(lang==='zh'?' zh':'');
+  mt.className='mtxt blink';
   mt.textContent=txt;mt.dataset.t=txt;
   setTimeout(()=>mt.classList.remove('blink'),900);
   animWave();
@@ -222,7 +233,7 @@ function addHist(tr,orig){
   hist.unshift({tr,orig,t:new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})});
   if(hist.length>8)hist.pop();
   const a=g('harea');a.style.display='block';
-  g('hlist').innerHTML=hist.map(h=>`<div class="hitem ${lang}"><div class="ht">${h.tr}</div><div class="ho">${h.orig}</div><div class="htm">${h.t}</div></div>`).join('');
+  g('hlist').innerHTML=hist.map(h=>`<div class="hitem"><div class="ht">${h.tr}</div><div class="ho">${h.orig}</div><div class="htm">${h.t}</div></div>`).join('');
 }
 
 function animWave(){
@@ -235,20 +246,20 @@ function animWave(){
 
 function unlockAudio(){
   if(audioUnlocked)return;
-  // Play a silent buffer to unlock autoplay on iOS Safari
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
     const buf=ctx.createBuffer(1,1,22050);
     const src=ctx.createBufferSource();
     src.buffer=buf;src.connect(ctx.destination);src.start(0);
-    ctx.resume().then(()=>{audioUnlocked=true;console.log('Audio unlocked');});
+    ctx.resume().then(()=>{audioUnlocked=true;});
   }catch(e){audioUnlocked=true;}
 }
 
 async function speakEL(txt,l){
   try{
     if(curAudio){curAudio.pause();curAudio=null;}
-    const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voices[l]}/stream`,{
+    const voiceId=LANGS[l]?.voice||'pNInz6obpgDQGcFmaJgB';
+    const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,{
       method:'POST',
       headers:{'Content-Type':'application/json','xi-api-key':elKey},
       body:JSON.stringify({text:txt,model_id:'eleven_multilingual_v2',voice_settings:{stability:0.5,similarity_boost:0.75}})
@@ -257,8 +268,6 @@ async function speakEL(txt,l){
     const url=URL.createObjectURL(await r.blob());
     curAudio=new Audio(url);
     curAudio.play().catch(e=>{
-      // If autoplay blocked, retry once on next user interaction
-      console.warn('Autoplay blocked, retrying...',e);
       const retry=()=>{curAudio&&curAudio.play();document.removeEventListener('touchstart',retry);};
       document.addEventListener('touchstart',retry,{once:true});
     });
@@ -270,7 +279,7 @@ function speakBrowser(txt,l){
   if(!('speechSynthesis'in window))return;
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(txt);
-  u.lang={zh:'zh-CN',ko:'ko-KR',de:'de-DE'}[l];u.rate=0.9;
+  u.lang=LANGS[l]?.bcp||'en';u.rate=0.9;
   window.speechSynthesis.speak(u);
 }
 
@@ -282,9 +291,8 @@ function togAudio(){
 
 function updAbtn(playing){
   const b=g('abtn');
-  if(!audioOn){b.className='abtn off';b.textContent='🔇 Audio Off';return;}
-  b.className='abtn '+(lang||'off');
-  b.textContent=playing?'🔊 Playing…':'🎧 Audio On';
+  b.className='abtn'+(audioOn?'':' off');
+  b.textContent=!audioOn?'🔇 Audio Off':playing?'🔊 Playing…':'🎧 Audio On';
 }
 
 function show(id){
