@@ -392,13 +392,13 @@ async function processTranslationQueue(){
 
 async function translateQueuedItem(item){
   const activeLangs=
-    Object.keys(lc).filter(l=>lc[l]>0);
+  Object.keys(lc).filter(l=>lc[l]>0);
 
-  /*
-    If nobody is listening yet,
-    don't generate translations unnecessarily.
-  */
-  if(activeLangs.length===0)return;
+if(activeLangs.length===0){
+  throw new Error(
+    'Waiting for active listener'
+  );
+}
 
   activeLangs.forEach(l=>{
     const el=g('m'+l);
