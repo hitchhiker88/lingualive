@@ -703,11 +703,15 @@ const sttStarted=
   await startRealtimeSTT();
 
 if(!sttStarted){
-  toast(
-    'Could not start realtime transcription'
+
+  console.error(
+    'Broadcast cannot continue because Scribe failed'
   );
 
-  stop();
+  toast(
+    'Realtime STT failed — see status/Console'
+  );
+
   return;
 }
 
@@ -884,101 +888,82 @@ function handleScribeCommitted(data){
 
 async function startRealtimeSTT(){
   try{
-
     g('bcastStatus').textContent=
-      'Starting realtime transcription…';
+      'Connecting realtime transcription…';
+
+    console.log('Starting Scribe realtime STT...');
+
+    const sdk=
+      await loadScribeSdk();
 
     const {
       Scribe,
       RealtimeEvents,
       CommitStrategy
-    }=await loadScribeSdk();
+    }=sdk;
+
+    console.log('Scribe SDK loaded');
 
     const token=
       await fetchScribeToken();
 
+    console.log('Scribe token received');
+
     scribeReady=false;
 
-    const connection=
-      Scribe.connect({
-        token,
+    scribeConn=Scribe.connect({
+      token:token,
 
-        modelId:
-          'scribe_v2_realtime',
+      modelId:'scribe_v2_realtime',
 
-        languageCode:'en',
+      languageCode:'en',
 
-        commitStrategy:
-          CommitStrategy.VAD,
+      commitStrategy:
+        CommitStrategy.VAD,
 
-        /*
-          Fast sentence/phrase finalisation.
+      vadSilenceThresholdSecs:0.55,
 
-          0.55 sec is intentionally lower
-          than the default 1.5 sec because
-          Lingua Live prioritises latency.
-        */
-        vadSilenceThresholdSecs:0.55,
+      vadThreshold:0.4,
 
-        vadThreshold:0.4,
+      minSpeechDurationMs:100,
 
-        minSpeechDurationMs:100,
+      minSilenceDurationMs:100,
 
-        minSilenceDurationMs:80,
+      noVerbatim:true,
 
-        /*
-          Removes unnecessary filler words
-          and false starts from the text
-          sent for translation.
-        */
-        noVerbatim:true,
+      keyterms:[
+        'FitLine',
+        'PM-International','NTC',
+        'Nutrient Transport Concept',
+        'PM',
+        'Microsolve+',
+        'Direct Sales',
+        'Network Marketing',
+        'MLM',
+        'GMP',
+        'Good Manufacturing Process',
+        'Elab',
+        'LIST',
+        'Luxembourg Institute of Science and Technology',
+        'University of Applied Sciences Upper Austria'
+      ],
 
-        /*
-          Helpful vocabulary for this app.
-          More terms can be added later.
-        */
-        keyterms:[
-          'FitLine',
-          'PM-International',
-          'NTC',
-          'Nutrient Transport Concept',
-          'PM',
-          'Microsolve+',
-          'Direct Sales',
-          'Network Marketing',
-          'MLM',
-          'GMP',
-          'Good Manufacturing Process',
-          'Elab',
-          'LIST',
-          'Luxembourg Institute of Science and Technology',
-          'University of Applied Sciences Upper Austria'
-        ],
+      microphone:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true
+      }
+    });
 
-        microphone:{
-          echoCancellation:true,
-          noiseSuppression:true,
-          autoGainControl:true
-        }
-      });
-
-    scribeConn=connection;
-
-    connection.on(
-      RealtimeEvents.PARTIAL_TRANSCRIPT,
-      handleScribePartial
+    console.log(
+      'Scribe connection created'
     );
 
-    connection.on(
-      RealtimeEvents.COMMITTED_TRANSCRIPT,
-      handleScribeCommitted
-    );
-
-    connection.on(
+    scribeConn.on(
       RealtimeEvents.SESSION_STARTED,
       data=>{
         console.log(
-          'Scribe realtime session:',
+          'Scribe session started:',
           data
         );
 
@@ -990,86 +975,67 @@ async function startRealtimeSTT(){
       }
     );
 
-    connection.on(
+    scribeConn.on(
+      RealtimeEvents.PARTIAL_TRANSCRIPT,
+      data=>{
+        console.log(
+          'Scribe partial:',
+          data.text
+        );
+
+        handleScribePartial(data);
+      }
+    );
+
+    scribeConn.on(
+      RealtimeEvents.COMMITTED_TRANSCRIPT,
+      data=>{
+        console.log(
+          'Scribe committed:',
+          data.text
+        );
+
+        handleScribeCommitted(data);
+      }
+    );
+
+    scribeConn.on(
       RealtimeEvents.ERROR,
       error=>{
         console.error(
-          'Scribe realtime error:',
+          'Scribe error:',
           error
         );
 
-        toast(
-          'Realtime transcription error'
-        );
-      }
-    );
-
-    connection.on(
-      RealtimeEvents.AUTH_ERROR,
-      error=>{
-        console.error(
-          'Scribe authentication error:',
-          error
-        );
-
-        toast(
-          'Scribe authentication failed'
-        );
-      }
-    );
-
-    connection.on(
-      RealtimeEvents.QUOTA_EXCEEDED,
-      error=>{
-        console.error(
-          'Scribe quota exceeded:',
-          error
-        );
-
-        toast(
-          'ElevenLabs transcription quota exceeded'
-        );
+        g('bcastStatus').textContent=
+          'Realtime transcription error — check Console';
       }
     );
 
     /*
-      Give the WebSocket up to 8 seconds
-      to establish its realtime session.
+      Wait until SESSION_STARTED arrives.
     */
-    await new Promise(
-      (resolve,reject)=>{
+    const startedAt=Date.now();
 
-        const started=
-          Date.now();
+    while(!scribeReady){
 
-        const check=()=>{
-
-          if(scribeReady){
-            resolve();
-            return;
-          }
-
-          if(
-            Date.now()-started>
-            8000
-          ){
-            reject(
-              new Error(
-                'Scribe connection timed out'
-              )
-            );
-
-            return;
-          }
-
-          setTimeout(
-            check,
-            100
-          );
-        };
-
-        check();
+      if(
+        Date.now()-startedAt >
+        10000
+      ){
+        throw new Error(
+          'Scribe session did not start within 10 seconds'
+        );
       }
+
+      await new Promise(
+        resolve=>
+          setTimeout(resolve,100)
+      );
+    }
+
+    console.log(
+      'Realtime STT ready'
     );
 
     return true;
@@ -1077,9 +1043,13 @@ async function startRealtimeSTT(){
   }catch(error){
 
     console.error(
-      'Unable to start realtime STT:',
+      'START REALTIME STT FAILED:',
       error
     );
+
+    g('bcastStatus').textContent=
+      'Realtime STT failed: '+
+      (error?.message||error);
 
     toast(
       'Realtime transcription failed'
