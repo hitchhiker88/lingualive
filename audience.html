@@ -150,7 +150,8 @@ const SID=P.get('s');
 let lang=null,elKey='',audioOn=true,audioUnlocked=false;
 let ably=null,bch=null,pch=null,curAudio=null,hist=[];
 
-let incomingQueue=[];
+let pendingBySeq=new Map();
+let expectedSeq=null;
 let queueBusy=false;
 let currentDisplayed=null;
 
@@ -208,10 +209,29 @@ async function connectAbly(ablyKey){
 function goLang(){show('s2');}
 
 function pick(l){
-  if(lang&&pch)pch.publish('leave',{lang});
+  if(lang&&pch){
+    pch.publish('leave',{lang});
+  }
+
   lang=l;
-  if(pch)pch.publish('join',{lang:l});
-  theme(l);show('s3');updAbtn();
+
+  // Reset sequencing because this listener may be
+  // joining midway through a broadcast.
+  pendingBySeq.clear();
+  expectedSeq=null;
+  queueBusy=false;
+  currentDisplayed=null;
+
+  if(pch){
+    pch.publish(
+      'join',
+      {lang:l}
+    );
+  }
+
+  theme(l);
+  show('s3');
+  updAbtn();
   unlockAudio();
 }
 
@@ -227,16 +247,28 @@ function handleT(msg){
 
   if(!txt)return;
 
-  incomingQueue.push({
+  const seq=Number(msg.seq);
+
+  if(!Number.isFinite(seq)){
+    console.warn('Translation arrived without valid seq',msg);
+    return;
+  }
+
+  // First valid message becomes our starting point.
+  // This matters if the listener joins halfway through a presentation.
+  if(expectedSeq===null){
+    expectedSeq=seq;
+  }
+
+  // Ignore anything older than what we have already played.
+  if(seq<expectedSeq){
+    return;
+  }
+
+  pendingBySeq.set(seq,{
     ...msg,
     txt
   });
-
-  incomingQueue.sort(
-    (a,b)=>
-      (a.seq??Number.MAX_SAFE_INTEGER)-
-      (b.seq??Number.MAX_SAFE_INTEGER)
-  );
 
   processIncomingQueue();
 }
@@ -246,27 +278,41 @@ async function processIncomingQueue(){
 
   queueBusy=true;
 
-  while(incomingQueue.length){
-    const msg=incomingQueue.shift();
+  try{
+    while(expectedSeq!==null){
 
-    renderTranslation(msg);
-
-    if(audioOn){
-      if(elKey){
-        await speakEL(
-          msg.txt,
-          lang
-        );
-      }else{
-        await speakBrowser(
-          msg.txt,
-          lang
-        );
+      // IMPORTANT:
+      // Do not skip ahead if the expected phrase has not arrived.
+      if(!pendingBySeq.has(expectedSeq)){
+        break;
       }
-    }
-  }
 
-  queueBusy=false;
+      const msg=
+        pendingBySeq.get(expectedSeq);
+
+      pendingBySeq.delete(expectedSeq);
+
+      renderTranslation(msg);
+
+      if(audioOn){
+        if(elKey){
+          await speakEL(
+            msg.txt,
+            lang
+          );
+        }else{
+          await speakBrowser(
+            msg.txt,
+            lang
+          );
+        }
+      }
+
+      expectedSeq++;
+    }
+  }finally{
+    queueBusy=false;
+  }
 }
 
 function renderTranslation(msg){
