@@ -634,9 +634,21 @@ function startRecog(){
     spk
   );
 }
-  recog.onerror=e=>{if(e.error!=='no-speech')toast('Speech error: '+e.error);};
-  recog.onend=()=>{if(live)setTimeout(()=>recog.start(),200);};
-  recog.start();
+};   // <-- ADD THIS LINE
+
+recog.onerror=e=>{
+  if(e.error!=='no-speech'){
+    toast('Speech error: '+e.error);
+  }
+};
+
+recog.onend=()=>{
+  if(live){
+    setTimeout(()=>recog.start(),200);
+  }
+};
+
+recog.start();
 }
 
 function getSpk(){
