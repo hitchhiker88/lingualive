@@ -219,7 +219,19 @@ const LANGS={
   uk:{name:'Ukrainian',flag:'🇺🇦'}
 };
 
-let live=false,timerInt=null,start=null,recog=null,actx=null,anlz=null,mic=null,raf=null;
+let live=false,
+    timerInt=null,
+    start=null,
+    actx=null,
+    anlz=null,
+    mic=null,
+    raf=null;
+
+let scribeConn=null;
+let scribeSdk=null;
+let scribePartialDiv=null;
+let scribeSegmentSpk=null;
+let scribeReady=false;
 let ably=null,bch=null,pch=null,hist=[],spkIdx=0,lastSpk=Date.now();
 let lc={};Object.keys(LANGS).forEach(l=>lc[l]=0);
 let cfg={ablyKey:'',elevenKey:'',hostPassword:''};
@@ -252,7 +264,7 @@ function updatePipelineStatus(extra=''){
     `${extra?` · ${extra}`:''}`;
 }
 
-function splitForTranslation(text,maxWords=28){
+function splitForTranslation(text,maxWords=14){
   const clean=(text||'').replace(/\s+/g,' ').trim();
 
   if(!clean)return[];
@@ -685,10 +697,27 @@ async function go(){
     {code}
   );
 
-  setupAudio(mic);
-  startRecog();
+setupAudio(mic);
 
-  toast('✓ Live! Show the QR code to your audience');
+const sttStarted=
+  await startRealtimeSTT();
+
+if(!sttStarted){
+  toast(
+    'Could not start realtime transcription'
+  );
+
+  stop();
+  return;
+}
+
+updatePipelineStatus(
+  'Realtime STT ready'
+);
+
+toast(
+  '✓ Live! Realtime transcription ready'
+);
 }
 
 function stop(){
@@ -696,7 +725,28 @@ function stop(){
   g('liveBadge').classList.remove('on');g('timer').classList.remove('on');
   g('bcastBtn').classList.remove('stop');g('btnIcon').textContent='▶';g('btnTxt').textContent='Start Broadcast';
   g('bcastStatus').textContent='Broadcast ended.';
-  if(recog)recog.stop();if(mic)mic.getTracks().forEach(t=>t.stop());
+  if(scribeConn){
+
+  try{
+    scribeConn.close();
+  }catch(e){
+    console.warn(
+      'Scribe close error:',
+      e
+    );
+  }
+
+  scribeConn=null;
+}
+
+scribeReady=false;
+
+if(scribePartialDiv){
+  scribePartialDiv.remove();
+  scribePartialDiv=null;
+}
+
+scribeSegmentSpk=null;if(mic)mic.getTracks().forEach(t=>t.stop());
   if(raf)cancelAnimationFrame(raf);if(actx)actx.close();
   if(bch)bch.publish('end',{});if(ably)ably.close();
   g('ablyPill').textContent='⬤ Offline';g('ablyPill').className='ably-pill';
@@ -713,48 +763,330 @@ function drawViz(){
   for(let i=0;i<60;i++){const b=g('vb'+i);if(b){const v=d[i*2]||0;b.style.height=(4+(v/255)*44)+'px';b.className='vb'+(v>20?' on':'');}}
 }
 
-function startRecog(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){toast('Use Chrome for speech recognition');return;}
-  recog=new SR();recog.lang='en-US';recog.continuous=true;recog.interimResults=true;
-  let iDiv=null;
-  recog.onresult=e=>{
-    let int='',fin='';
-    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;e.results[i].isFinal?(fin+=t):(int+=t);}
-    const spk=getSpk();
-    if(int){if(!iDiv)iDiv=addEntry(spk,int,true);else iDiv.querySelector('.etxt').textContent=int;}
-    if(fin.trim()){
-  if(iDiv){
-    iDiv.remove();
-    iDiv=null;
+async function fetchScribeToken(){
+  const response=await fetch(
+    '/.netlify/functions/scribe-token',
+    {
+      method:'POST',
+      cache:'no-store'
+    }
+  );
+
+  const body=await response.text();
+
+  let data;
+
+  try{
+    data=JSON.parse(body);
+  }catch(e){
+    throw new Error(
+      'Invalid Scribe token response'
+    );
+  }
+
+  if(!response.ok){
+    throw new Error(
+      data.error||
+      'Unable to create Scribe token'
+    );
+  }
+
+  if(!data.token){
+    throw new Error(
+      'Scribe token missing'
+    );
+  }
+
+  return data.token;
+}
+
+
+async function loadScribeSdk(){
+  if(scribeSdk){
+    return scribeSdk;
+  }
+
+  scribeSdk=await import(
+    'https://esm.sh/@elevenlabs/client@1.4.0?bundle'
+  );
+
+  return scribeSdk;
+}
+
+
+function handleScribePartial(data){
+  const txt=(data?.text||'')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  if(!txt){
+    return;
+  }
+
+  if(!scribeSegmentSpk){
+    scribeSegmentSpk=getSpk();
+  }
+
+  if(!scribePartialDiv){
+
+    scribePartialDiv=addEntry(
+      scribeSegmentSpk,
+      txt,
+      true
+    );
+
+  }else{
+
+    const textEl=
+      scribePartialDiv.querySelector(
+        '.etxt'
+      );
+
+    if(textEl){
+      textEl.textContent=txt;
+    }
+  }
+}
+
+
+function handleScribeCommitted(data){
+  const txt=(data?.text||'')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  if(!txt){
+    return;
+  }
+
+  const spk=
+    scribeSegmentSpk||
+    getSpk();
+
+  if(scribePartialDiv){
+    scribePartialDiv.remove();
+    scribePartialDiv=null;
   }
 
   addEntry(
     spk,
-    fin.trim(),
+    txt,
     false
   );
 
   enqueueTranslation(
-    fin.trim(),
+    txt,
     spk
   );
+
+  scribeSegmentSpk=null;
 }
-};
 
-recog.onerror=e=>{
-  if(e.error!=='no-speech'){
-    toast('Speech error: '+e.error);
+
+async function startRealtimeSTT(){
+  try{
+
+    g('bcastStatus').textContent=
+      'Starting realtime transcription…';
+
+    const {
+      Scribe,
+      RealtimeEvents,
+      CommitStrategy
+    }=await loadScribeSdk();
+
+    const token=
+      await fetchScribeToken();
+
+    scribeReady=false;
+
+    const connection=
+      Scribe.connect({
+        token,
+
+        modelId:
+          'scribe_v2_realtime',
+
+        languageCode:'en',
+
+        commitStrategy:
+          CommitStrategy.VAD,
+
+        /*
+          Fast sentence/phrase finalisation.
+
+          0.55 sec is intentionally lower
+          than the default 1.5 sec because
+          Lingua Live prioritises latency.
+        */
+        vadSilenceThresholdSecs:0.55,
+
+        vadThreshold:0.4,
+
+        minSpeechDurationMs:100,
+
+        minSilenceDurationMs:80,
+
+        /*
+          Removes unnecessary filler words
+          and false starts from the text
+          sent for translation.
+        */
+        noVerbatim:true,
+
+        /*
+          Helpful vocabulary for this app.
+          More terms can be added later.
+        */
+        keyterms:[
+          'FitLine',
+          'PM-International',
+          'NTC',
+          'Nutrient Transport Concept',
+          'PM',
+          'Microsolve+',
+          'Direct Sales',
+          'Network Marketing',
+          'MLM',
+          'GMP',
+          'Good Manufacturing Process',
+          'Elab',
+          'LIST',
+          'Luxembourg Institute of Science and Technology',
+          'University of Applied Sciences Upper Austria'
+        ],
+
+        microphone:{
+          echoCancellation:true,
+          noiseSuppression:true,
+          autoGainControl:true
+        }
+      });
+
+    scribeConn=connection;
+
+    connection.on(
+      RealtimeEvents.PARTIAL_TRANSCRIPT,
+      handleScribePartial
+    );
+
+    connection.on(
+      RealtimeEvents.COMMITTED_TRANSCRIPT,
+      handleScribeCommitted
+    );
+
+    connection.on(
+      RealtimeEvents.SESSION_STARTED,
+      data=>{
+        console.log(
+          'Scribe realtime session:',
+          data
+        );
+
+        scribeReady=true;
+
+        updatePipelineStatus(
+          'Realtime STT ready'
+        );
+      }
+    );
+
+    connection.on(
+      RealtimeEvents.ERROR,
+      error=>{
+        console.error(
+          'Scribe realtime error:',
+          error
+        );
+
+        toast(
+          'Realtime transcription error'
+        );
+      }
+    );
+
+    connection.on(
+      RealtimeEvents.AUTH_ERROR,
+      error=>{
+        console.error(
+          'Scribe authentication error:',
+          error
+        );
+
+        toast(
+          'Scribe authentication failed'
+        );
+      }
+    );
+
+    connection.on(
+      RealtimeEvents.QUOTA_EXCEEDED,
+      error=>{
+        console.error(
+          'Scribe quota exceeded:',
+          error
+        );
+
+        toast(
+          'ElevenLabs transcription quota exceeded'
+        );
+      }
+    );
+
+    /*
+      Give the WebSocket up to 8 seconds
+      to establish its realtime session.
+    */
+    await new Promise(
+      (resolve,reject)=>{
+
+        const started=
+          Date.now();
+
+        const check=()=>{
+
+          if(scribeReady){
+            resolve();
+            return;
+          }
+
+          if(
+            Date.now()-started>
+            8000
+          ){
+            reject(
+              new Error(
+                'Scribe connection timed out'
+              )
+            );
+
+            return;
+          }
+
+          setTimeout(
+            check,
+            100
+          );
+        };
+
+        check();
+      }
+    );
+
+    return true;
+
+  }catch(error){
+
+    console.error(
+      'Unable to start realtime STT:',
+      error
+    );
+
+    toast(
+      'Realtime transcription failed'
+    );
+
+    return false;
   }
-};
-
-recog.onend=()=>{
-  if(live){
-    setTimeout(()=>recog.start(),200);
-  }
-};
-
-recog.start();
 }
 
 function getSpk(){
