@@ -223,6 +223,251 @@ let live=false,timerInt=null,start=null,recog=null,actx=null,anlz=null,mic=null,
 let ably=null,bch=null,pch=null,hist=[],spkIdx=0,lastSpk=Date.now();
 let lc={};Object.keys(LANGS).forEach(l=>lc[l]=0);
 let cfg={ablyKey:'',elevenKey:'',hostPassword:''};
+let translationQueue=[];
+let translationBusy=false;
+let translationSeq=0;
+let rollingContext=[];
+let lastTranslationMs=0;
+let translationFailures=0;
+let sessionCode='';
+
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+function updatePipelineStatus(extra=''){
+  if(!live)return;
+
+  const q=translationQueue.length;
+
+  const latency=lastTranslationMs
+    ?` · Last translation: ${(lastTranslationMs/1000).toFixed(1)}s`
+    :'';
+
+  const failures=translationFailures
+    ?` · Retries: ${translationFailures}`
+    :'';
+
+  g('bcastStatus').textContent=
+    `Broadcasting live · Session: ${sessionCode} · Queue: ${q}`+
+    `${latency}${failures}`+
+    `${extra?` · ${extra}`:''}`;
+}
+
+function splitForTranslation(text,maxWords=28){
+  const clean=(text||'').replace(/\s+/g,' ').trim();
+
+  if(!clean)return[];
+
+  const sentenceParts=
+    clean.match(/[^.!?]+[.!?]?/g)||[clean];
+
+  const chunks=[];
+
+  for(const sentence of sentenceParts){
+    const s=sentence.trim();
+
+    if(!s)continue;
+
+    const words=s.split(/\s+/);
+
+    if(words.length<=maxWords){
+      chunks.push(s);
+      continue;
+    }
+
+    const clauses=s.split(/(?<=[,;:])\s+/);
+
+    let buffer='';
+
+    for(const clause of clauses){
+      const candidate=(buffer+' '+clause).trim();
+
+      if(candidate.split(/\s+/).length<=maxWords){
+        buffer=candidate;
+      }else{
+        if(buffer)chunks.push(buffer);
+
+        const clauseWords=clause.split(/\s+/);
+
+        while(clauseWords.length>maxWords){
+          chunks.push(
+            clauseWords.splice(0,maxWords).join(' ')
+          );
+        }
+
+        buffer=clauseWords.join(' ');
+      }
+    }
+
+    if(buffer)chunks.push(buffer);
+  }
+
+  return chunks;
+}
+
+function enqueueTranslation(text,spk){
+  for(const chunk of splitForTranslation(text)){
+    const item={
+      seq:++translationSeq,
+      text:chunk,
+      spk,
+      context:rollingContext.slice(-2),
+      capturedAt:Date.now(),
+      attempts:0
+    };
+
+    translationQueue.push(item);
+
+    rollingContext.push(chunk);
+
+    if(rollingContext.length>6){
+      rollingContext.shift();
+    }
+  }
+
+  updatePipelineStatus();
+
+  processTranslationQueue();
+}
+
+async function processTranslationQueue(){
+  if(translationBusy)return;
+
+  translationBusy=true;
+
+  while(translationQueue.length){
+    const item=translationQueue[0];
+
+    item.attempts++;
+
+    const started=performance.now();
+
+    try{
+      await translateQueuedItem(item);
+
+      lastTranslationMs=
+        performance.now()-started;
+
+      translationFailures=0;
+
+      translationQueue.shift();
+
+      updatePipelineStatus();
+
+    }catch(e){
+
+      console.error(
+        'Translation queue error',
+        item.seq,
+        e
+      );
+
+      translationFailures++;
+
+      updatePipelineStatus(
+        'retrying current phrase'
+      );
+
+      const backoff=Math.min(
+        5000,
+        500*Math.pow(
+          2,
+          Math.min(item.attempts-1,3)
+        )
+      );
+
+      await sleep(backoff);
+
+      if(
+        !live &&
+        (!ably ||
+        ably.connection.state==='closed')
+      ){
+        break;
+      }
+    }
+  }
+
+  translationBusy=false;
+}
+
+async function translateQueuedItem(item){
+  const activeLangs=
+    Object.keys(lc).filter(l=>lc[l]>0);
+
+  /*
+    If nobody is listening yet,
+    don't generate translations unnecessarily.
+  */
+  if(activeLangs.length===0)return;
+
+  activeLangs.forEach(l=>{
+    const el=g('m'+l);
+
+    if(el){
+      el.className='tctxt stream';
+      el.textContent='';
+    }
+  });
+
+  const r=await fetch(
+    '/.netlify/functions/translate',
+    {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        text:item.text,
+        langs:activeLangs,
+        context:item.context,
+        seq:item.seq
+      })
+    }
+  );
+
+  const body=await r.text();
+
+  let payload;
+
+  try{
+    payload=JSON.parse(body);
+  }catch(_){
+    throw new Error(
+      'Invalid translation response'
+    );
+  }
+
+  if(!r.ok){
+    throw new Error(
+      payload.error||('Error '+r.status)
+    );
+  }
+
+  const res=payload.translations||{};
+
+  Object.keys(res).forEach(l=>{
+    const el=g('m'+l);
+
+    if(el){
+      el.className='tctxt';
+      el.textContent=res[l]||'';
+    }
+  });
+
+  if(bch){
+    await bch.publish(
+      't',
+      {
+        seq:item.seq,
+        orig:item.text,
+        spk:item.spk.l,
+        tr:res,
+        capturedAt:item.capturedAt,
+        translatedAt:Date.now()
+      }
+    );
+  }
+}
 const SL=['Speaker A','Speaker B','Speaker C'],SC=['sA','sB','sC'];
 
 function g(id){return document.getElementById(id);}
@@ -293,15 +538,33 @@ async function toggleBroadcast(){live?stop():await go();}
 
 async function go(){
   if(!cfg.ablyKey){toast('Ably key not configured');return;}
-  try{mic=await navigator.mediaDevices.getUserMedia({audio:true});}
-  catch(e){toast('Mic access denied — allow microphone in browser settings');return;}
   try{
+  mic=await navigator.mediaDevices.getUserMedia({
+    audio:{
+      echoCancellation:true,
+      noiseSuppression:true,
+      autoGainControl:true
+    }
+  });
+}catch(e){
+  toast(
+    'Mic access denied — allow microphone in browser settings'
+  );
+  return;
+}
     ably=new Ably.Realtime({key:cfg.ablyKey});
     await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
     g('ablyPill').textContent='⬤ Connected';g('ablyPill').className='ably-pill ok';
   }catch(e){toast('Ably connection failed');mic.getTracks().forEach(t=>t.stop());return;}
 
   const code=Math.random().toString(36).substr(2,6).toUpperCase();
+  sessionCode=code;
+translationQueue=[];
+translationBusy=false;
+translationSeq=0;
+rollingContext=[];
+lastTranslationMs=0;
+translationFailures=0;
   bch=ably.channels.get('ll-'+code);
   pch=ably.channels.get('llp-'+code);
   pch.subscribe('join',m=>{lc[m.data.lang]=(lc[m.data.lang]||0)+1;updL();});
@@ -354,8 +617,23 @@ function startRecog(){
     for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;e.results[i].isFinal?(fin+=t):(int+=t);}
     const spk=getSpk();
     if(int){if(!iDiv)iDiv=addEntry(spk,int,true);else iDiv.querySelector('.etxt').textContent=int;}
-    if(fin.trim()){if(iDiv){iDiv.remove();iDiv=null;}addEntry(spk,fin.trim(),false);translate(fin.trim(),spk);}
-  };
+    if(fin.trim()){
+  if(iDiv){
+    iDiv.remove();
+    iDiv=null;
+  }
+
+  addEntry(
+    spk,
+    fin.trim(),
+    false
+  );
+
+  enqueueTranslation(
+    fin.trim(),
+    spk
+  );
+}
   recog.onerror=e=>{if(e.error!=='no-speech')toast('Speech error: '+e.error);};
   recog.onend=()=>{if(live)setTimeout(()=>recog.start(),200);};
   recog.start();
@@ -378,26 +656,6 @@ function addEntry(spk,txt,interim){
   feed.insertBefore(d,feed.firstChild);
   if(!interim)hist.push({s:spk.l,txt,t});
   return d;
-}
-
-async function translate(txt,spk){
-  // Get active listener languages only
-  const activeLangs=Object.keys(lc).filter(l=>lc[l]>0);
-  // If no one connected yet, translate all so host can see output
-  const langsToTranslate=activeLangs.length>0?activeLangs:Object.keys(LANGS);
-  langsToTranslate.forEach(l=>{const el=g('m'+l);if(el){el.className='tctxt stream';el.textContent='';}});
-  try{
-    const r=await fetch('/.netlify/functions/translate',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:txt,langs:langsToTranslate})
-    });
-    const body=await r.text();
-    if(!r.ok){const e=JSON.parse(body);throw new Error(e.error||'Error '+r.status);}
-    const res=JSON.parse(body.replace(/```json|```/g,'').trim());
-    Object.keys(res).forEach(l=>{const el=g('m'+l);if(el){el.className='tctxt';el.textContent=res[l]||'';}});
-    if(bch)bch.publish('t',{orig:txt,spk:spk.l,tr:res,ts:Date.now()});
-  }catch(e){console.error(e);toast('Error: '+e.message);Object.keys(LANGS).forEach(l=>{const el=g('m'+l);if(el)el.className='tctxt';});}
 }
 
 function updL(){
