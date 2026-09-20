@@ -537,51 +537,157 @@ async function loadConfig(){
 async function toggleBroadcast(){live?stop():await go();}
 
 async function go(){
-  if(!cfg.ablyKey){toast('Ably key not configured');return;}
-  try{
-  mic=await navigator.mediaDevices.getUserMedia({
-    audio:{
-      echoCancellation:true,
-      noiseSuppression:true,
-      autoGainControl:true
-    }
-  });
-}catch(e){
-  toast(
-    'Mic access denied — allow microphone in browser settings'
-  );
-  return;
-}
-    ably=new Ably.Realtime({key:cfg.ablyKey});
-    await new Promise((res,rej)=>{ably.connection.on('connected',res);ably.connection.on('failed',rej);setTimeout(rej,8000);});
-    g('ablyPill').textContent='⬤ Connected';g('ablyPill').className='ably-pill ok';
-  }catch(e){toast('Ably connection failed');mic.getTracks().forEach(t=>t.stop());return;}
+  if(!cfg.ablyKey){
+    toast('Ably key not configured');
+    return;
+  }
 
-  const code=Math.random().toString(36).substr(2,6).toUpperCase();
+  // Get microphone access
+  try{
+    mic=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true
+      }
+    });
+  }catch(e){
+    console.error('Microphone error:',e);
+    toast('Mic access denied — allow microphone in browser settings');
+    return;
+  }
+
+  // Connect to Ably
+  try{
+    ably=new Ably.Realtime({key:cfg.ablyKey});
+
+    await new Promise((res,rej)=>{
+      ably.connection.on('connected',res);
+      ably.connection.on('failed',rej);
+
+      setTimeout(
+        ()=>rej(new Error('Ably connection timeout')),
+        8000
+      );
+    });
+
+    g('ablyPill').textContent='⬤ Connected';
+    g('ablyPill').className='ably-pill ok';
+
+  }catch(e){
+    console.error('Ably connection error:',e);
+    toast('Ably connection failed');
+
+    if(mic){
+      mic.getTracks().forEach(t=>t.stop());
+    }
+
+    return;
+  }
+
+  // Create a new session
+  const code=Math.random()
+    .toString(36)
+    .substr(2,6)
+    .toUpperCase();
+
   sessionCode=code;
-translationQueue=[];
-translationBusy=false;
-translationSeq=0;
-rollingContext=[];
-lastTranslationMs=0;
-translationFailures=0;
+
+  translationQueue=[];
+  translationBusy=false;
+  translationSeq=0;
+  rollingContext=[];
+  lastTranslationMs=0;
+  translationFailures=0;
+
+  // Reset listener counts
+  Object.keys(LANGS).forEach(l=>{
+    lc[l]=0;
+  });
+
+  updL();
+
+  // Set up Ably channels
   bch=ably.channels.get('ll-'+code);
   pch=ably.channels.get('llp-'+code);
-  pch.subscribe('join',m=>{lc[m.data.lang]=(lc[m.data.lang]||0)+1;updL();});
-  pch.subscribe('leave',m=>{lc[m.data.lang]=Math.max(0,(lc[m.data.lang]||1)-1);updL();});
 
-  const aurl=window.location.origin+window.location.pathname.replace(/[^/]*$/,'audience.html')+'?s='+code;
+  pch.subscribe('join',m=>{
+    const language=m.data?.lang;
+
+    if(language){
+      lc[language]=(lc[language]||0)+1;
+      updL();
+    }
+  });
+
+  pch.subscribe('leave',m=>{
+    const language=m.data?.lang;
+
+    if(language){
+      lc[language]=Math.max(
+        0,
+        (lc[language]||1)-1
+      );
+
+      updL();
+    }
+  });
+
+  // Build audience URL and QR code
+  const aurl=
+    window.location.origin+
+    window.location.pathname.replace(
+      /[^/]*$/,
+      'audience.html'
+    )+
+    '?s='+code;
+
   g('scode').textContent=code;
-  g('urlbox').textContent=aurl;g('urlbox').dataset.url=aurl;
-  g('qrcode').innerHTML='';
-  new QRCode(g('qrcode'),{text:aurl,width:180,height:180,colorDark:'#0f0e0c',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
 
-  live=true;start=Date.now();timerInt=setInterval(updTimer,1000);
-  g('liveBadge').classList.add('on');g('timer').classList.add('on');
-  g('bcastBtn').classList.add('stop');g('btnIcon').textContent='■';g('btnTxt').textContent='Stop Broadcast';
-  g('bcastStatus').textContent='Broadcasting live · Session: '+code;
-  bch.publish('start',{code});
-  setupAudio(mic);startRecog();
+  g('urlbox').textContent=aurl;
+  g('urlbox').dataset.url=aurl;
+
+  g('qrcode').innerHTML='';
+
+  new QRCode(
+    g('qrcode'),
+    {
+      text:aurl,
+      width:180,
+      height:180,
+      colorDark:'#0f0e0c',
+      colorLight:'#ffffff',
+      correctLevel:QRCode.CorrectLevel.M
+    }
+  );
+
+  // Start broadcast
+  live=true;
+  start=Date.now();
+
+  timerInt=setInterval(
+    updTimer,
+    1000
+  );
+
+  g('liveBadge').classList.add('on');
+  g('timer').classList.add('on');
+
+  g('bcastBtn').classList.add('stop');
+  g('btnIcon').textContent='■';
+  g('btnTxt').textContent='Stop Broadcast';
+
+  g('bcastStatus').textContent=
+    'Broadcasting live · Session: '+code;
+
+  await bch.publish(
+    'start',
+    {code}
+  );
+
+  setupAudio(mic);
+  startRecog();
+
   toast('✓ Live! Show the QR code to your audience');
 }
 
@@ -634,7 +740,7 @@ function startRecog(){
     spk
   );
 }
-};   // <-- ADD THIS LINE
+};
 
 recog.onerror=e=>{
   if(e.error!=='no-speech'){
