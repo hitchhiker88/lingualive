@@ -246,8 +246,8 @@ let scribeSdk=null;
 let scribePartialDiv=null;
 let scribeSegmentSpk=null;
 let scribeReady=false;
-let scribeCommitPending=false;
-let scribeCommitTimer=null;
+let scribePrevPartial='';
+let scribeEmittedWords=0;
 let ably=null,bch=null,pch=null,hist=[],spkIdx=0,lastSpk=Date.now();
 let lc={};Object.keys(LANGS).forEach(l=>lc[l]=0);
 let cfg={ablyKey:'',elevenKey:'',hostPassword:''};
@@ -280,7 +280,7 @@ function updatePipelineStatus(extra=''){
     `${extra?` · ${extra}`:''}`;
 }
 
-function splitForTranslation(text,maxWords=14){
+function splitForTranslation(text,maxWords=12){
   const clean=(text||'').replace(/\s+/g,' ').trim();
 
   if(!clean)return[];
@@ -901,84 +901,103 @@ function handleScribePartial(data){
     .replace(/\s+/g,' ')
     .trim();
 
-  if(!txt){
-    return;
-  }
+  if(!txt)return;
 
   if(!scribeSegmentSpk){
     scribeSegmentSpk=getSpk();
   }
 
-  if(!scribePartialDiv){
-    scribePartialDiv=addEntry(
-      scribeSegmentSpk,
-      txt,
-      true
-    );
-  }else{
-    const textEl=
-      scribePartialDiv.querySelector('.etxt');
+  const words=
+    txt.split(/\s+/);
 
-    if(textEl){
-      textEl.textContent=txt;
-    }
-  }
+  const prevWords=
+    scribePrevPartial
+      ?scribePrevPartial.split(/\s+/)
+      :[];
 
-  const wordCount=
-    txt.split(/\s+/).filter(Boolean).length;
+  // Count words that have remained unchanged
+  // across consecutive partial transcripts.
+  let stableCount=0;
 
-  // Hard limit: commit at 12 words
-  if(
-    wordCount>=12 &&
-    !scribeCommitPending &&
-    scribeConn
+  while(
+    stableCount<words.length &&
+    stableCount<prevWords.length &&
+    words[stableCount]===prevWords[stableCount]
   ){
-    scribeCommitPending=true;
-
-    clearTimeout(scribeCommitTimer);
-
-    try{
-      scribeConn.commit();
-    }catch(e){
-      console.error('Scribe commit failed:',e);
-      scribeCommitPending=false;
-    }
-
-    return;
+    stableCount++;
   }
 
-  // Also commit after a short natural pause
-  clearTimeout(scribeCommitTimer);
+  // Send each stable 12-word chunk immediately,
+  // without waiting for the speaker to pause.
+  while(
+    stableCount-scribeEmittedWords>=12
+  ){
+    const chunk=
+      words
+        .slice(
+          scribeEmittedWords,
+          scribeEmittedWords+12
+        )
+        .join(' ');
 
-  scribeCommitTimer=setTimeout(()=>{
-    if(
-      !scribeCommitPending &&
-      scribeConn &&
-      txt.trim()
-    ){
-      scribeCommitPending=true;
+    addEntry(
+      scribeSegmentSpk,
+      chunk,
+      false
+    );
 
-      try{
-        scribeConn.commit();
-      }catch(e){
-        console.error('Scribe pause commit failed:',e);
-        scribeCommitPending=false;
+    enqueueTranslation(
+      chunk,
+      scribeSegmentSpk
+    );
+
+    scribeEmittedWords+=12;
+  }
+
+  // Display only words that have not yet
+  // been sent for translation.
+  const remaining=
+    words
+      .slice(scribeEmittedWords)
+      .join(' ');
+
+  if(remaining){
+
+    if(!scribePartialDiv){
+      scribePartialDiv=addEntry(
+        scribeSegmentSpk,
+        remaining,
+        true
+      );
+    }else{
+      const textEl=
+        scribePartialDiv.querySelector(
+          '.etxt'
+        );
+
+      if(textEl){
+        textEl.textContent=remaining;
       }
     }
-  },650);
+
+  }else if(scribePartialDiv){
+
+    scribePartialDiv.remove();
+    scribePartialDiv=null;
+  }
+
+  scribePrevPartial=txt;
 }
 
 
 function handleScribeCommitted(data){
-  clearTimeout(scribeCommitTimer);
-  scribeCommitTimer=null;
-  scribeCommitPending=false;
-
   const txt=(data?.text||'')
     .replace(/\s+/g,' ')
     .trim();
 
   if(!txt){
+    scribePrevPartial='';
+    scribeEmittedWords=0;
     return;
   }
 
@@ -991,17 +1010,41 @@ function handleScribeCommitted(data){
     scribePartialDiv=null;
   }
 
-  addEntry(
-    spk,
-    txt,
-    false
-  );
+  const words=
+    txt.split(/\s+/);
 
-  enqueueTranslation(
-    txt,
-    spk
-  );
+  // Words already released from the live partial
+  // must not be translated a second time.
+  const remaining=
+    words
+      .slice(scribeEmittedWords)
+      .join(' ');
 
+  if(remaining){
+
+    const chunks=
+      splitForTranslation(
+        remaining,
+        12
+      );
+
+    for(const chunk of chunks){
+
+      addEntry(
+        spk,
+        chunk,
+        false
+      );
+
+      enqueueTranslation(
+        chunk,
+        spk
+      );
+    }
+  }
+
+  scribePrevPartial='';
+  scribeEmittedWords=0;
   scribeSegmentSpk=null;
 }
 
@@ -1039,8 +1082,11 @@ async function startRealtimeSTT(){
       languageCode:'en',
 
       commitStrategy:
-  CommitStrategy.MANUAL,
-
+  CommitStrategy.VAD,
+vadSilenceThresholdSecs:0.55,
+vadThreshold:0.4,
+minSpeechDurationMs:100,
+minSilenceDurationMs:100,
       noVerbatim:true,
 
 
