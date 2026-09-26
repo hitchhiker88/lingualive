@@ -147,7 +147,7 @@ const LANGS={
 
 const P=new URLSearchParams(window.location.search);
 const SID=P.get('s');
-let lang=null,elKey='',audioOn=true,audioUnlocked=false;
+let lang=null,audioOn=true,audioUnlocked=false;
 let ably=null,bch=null,pch=null,curAudio=null,hist=[];
 
 let pendingBySeq=new Map();
@@ -186,7 +186,6 @@ async function loadConfigAndConnect(){
     const r=await fetch('/.netlify/functions/config');
     if(!r.ok)throw new Error('Config failed');
     const cfg=await r.json();
-    elKey=cfg.elevenKey||'';
     await connectAbly(cfg.ablyKey);
   }catch(e){
     g('spinW').innerHTML='<div style="font-size:13px;color:var(--mut);text-align:center">Connection failed.<br>Please scan QR code again.</div>';
@@ -281,8 +280,8 @@ async function processIncomingQueue(){
   try{
     while(expectedSeq!==null){
 
-      // IMPORTANT:
-      // Do not skip ahead if the expected phrase has not arrived.
+      // Do not skip ahead if the expected phrase
+      // has not arrived.
       if(!pendingBySeq.has(expectedSeq)){
         break;
       }
@@ -295,8 +294,12 @@ async function processIncomingQueue(){
       renderTranslation(msg);
 
       if(audioOn){
-        if(elKey){
+        const audioUrl=
+          msg.audio?.[lang];
+
+        if(audioUrl){
           await speakEL(
+            audioUrl,
             msg.txt,
             lang
           );
@@ -384,42 +387,21 @@ function unlockAudio(){
   }catch(e){audioUnlocked=true;}
 }
 
-async function speakEL(txt,l){
+async function speakEL(audioUrl,txt,l){
   if(!audioOn)return;
 
   try{
-    const voiceId=
-      LANGS[l]?.voice||
-      'pNInz6obpgDQGcFmaJgB';
-
     const r=await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`,
+      audioUrl,
       {
-        method:'POST',
-
-        headers:{
-          'Content-Type':'application/json',
-          'xi-api-key':elKey
-        },
-
-        body:JSON.stringify({
-          text:txt,
-
-          model_id:
-            'eleven_flash_v2_5',
-
-          voice_settings:{
-            stability:0.5,
-            similarity_boost:0.75,
-            speed:1.0
-          }
-        })
+        method:'GET',
+        cache:'force-cache'
       }
     );
 
     if(!r.ok){
       throw new Error(
-        'EL '+r.status
+        'Shared audio '+r.status
       );
     }
 
@@ -451,7 +433,6 @@ async function speakEL(txt,l){
         }
 
         curAudio=null;
-
         activeAudioResolve=null;
 
         updAbtn(false);
@@ -460,7 +441,6 @@ async function speakEL(txt,l){
       };
 
       audio.onended=finish;
-
       audio.onerror=finish;
 
       updAbtn(true);
@@ -488,7 +468,6 @@ async function speakEL(txt,l){
     });
 
   }catch(e){
-
     console.error(e);
 
     await speakBrowser(
