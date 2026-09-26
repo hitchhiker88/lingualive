@@ -60,7 +60,12 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
 .ccard{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:11px;min-height:90px;transition:border-color 0.3s;}
 .ccard.active{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);}
 .clbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:9px;}
-.mtxt{font-size:20px;font-weight:500;line-height:1.5;min-height:40px;}
+.mtxt{
+  font-size:18px;
+  font-weight:500;
+  line-height:1.45;
+  min-height:40px;
+}
 .blink::after{content:'▍';animation:bc 0.7s infinite;font-size:16px;vertical-align:middle;color:var(--acc);}
 @keyframes bc{0%,100%{opacity:1}50%{opacity:0}}
 .ocard{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:11px;padding:12px 15px;margin-bottom:10px;}
@@ -319,11 +324,52 @@ async function processIncomingQueue(){
 }
 
 function renderTranslation(msg){
-  if(currentDisplayed){
-    addHist(
-      currentDisplayed.tr,
-      currentDisplayed.orig
-    );
+  const incomingText=(msg.txt||'').trim();
+  const incomingOrig=(msg.orig||'').trim();
+
+  const incomingWords=
+    incomingText
+      .split(/\s+/)
+      .filter(Boolean)
+      .length;
+
+  const msgTime=
+    Number(msg.capturedAt)||
+    Date.now();
+
+  const canMerge=
+    currentDisplayed &&
+    currentDisplayed.spk===msg.spk &&
+    (msgTime-currentDisplayed.lastTime)<=5000 &&
+    (currentDisplayed.wordCount+incomingWords)<=36;
+
+  if(canMerge){
+
+    currentDisplayed.tr=
+      (currentDisplayed.tr+' '+incomingText).trim();
+
+    currentDisplayed.orig=
+      (currentDisplayed.orig+' '+incomingOrig).trim();
+
+    currentDisplayed.wordCount+=incomingWords;
+    currentDisplayed.lastTime=msgTime;
+
+  }else{
+
+    if(currentDisplayed){
+      addHist(
+        currentDisplayed.tr,
+        currentDisplayed.orig
+      );
+    }
+
+    currentDisplayed={
+      tr:incomingText,
+      orig:incomingOrig,
+      spk:msg.spk||'',
+      wordCount:incomingWords,
+      lastTime:msgTime
+    };
   }
 
   if(msg.spk){
@@ -334,31 +380,33 @@ function renderTranslation(msg){
   g('ocard').style.display='block';
 
   g('otxt').textContent=
-    msg.orig||'';
+    currentDisplayed.orig;
 
   const card=g('ccard');
-
   card.className='ccard active';
 
   const mt=g('mtxt');
 
-  mt.className='mtxt blink';
+  // Only animate when starting a genuinely new block
+  mt.className=
+    canMerge
+      ?'mtxt'
+      :'mtxt blink';
 
-  mt.textContent=msg.txt;
+  mt.textContent=
+    currentDisplayed.tr;
 
-  mt.dataset.t=msg.txt;
+  mt.dataset.t=
+    currentDisplayed.tr;
 
-  setTimeout(
-    ()=>mt.classList.remove('blink'),
-    900
-  );
+  if(!canMerge){
+    setTimeout(
+      ()=>mt.classList.remove('blink'),
+      900
+    );
+  }
 
   animWave();
-
-  currentDisplayed={
-    tr:msg.txt,
-    orig:msg.orig||''
-  };
 }
 
 function addHist(tr,orig){
