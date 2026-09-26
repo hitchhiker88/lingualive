@@ -418,13 +418,13 @@ async function processTranslationQueue(){
 
 async function translateQueuedItem(item){
   const activeLangs=
-  Object.keys(lc).filter(l=>lc[l]>0);
+    Object.keys(lc).filter(l=>lc[l]>0);
 
-if(activeLangs.length===0){
-  throw new Error(
-    'Waiting for active listener'
-  );
-}
+  if(activeLangs.length===0){
+    throw new Error(
+      'Waiting for active listener'
+    );
+  }
 
   activeLangs.forEach(l=>{
     const el=g('m'+l);
@@ -480,6 +480,66 @@ if(activeLangs.length===0){
     }
   });
 
+  const audio={};
+
+  await Promise.all(
+    Object.keys(res).map(async l=>{
+      if(!res[l]||!VOICES[l])return;
+
+      try{
+        const tr=await fetch(
+          '/.netlify/functions/tts',
+          {
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json'
+            },
+            body:JSON.stringify({
+              text:res[l],
+              voiceId:VOICES[l],
+              seq:item.seq,
+              lang:l
+            })
+          }
+        );
+
+        const tBody=await tr.text();
+
+        if(!tr.ok){
+          console.error(
+            'TTS generation failed',
+            l,
+            tBody
+          );
+          return;
+        }
+
+        let tData;
+
+        try{
+          tData=JSON.parse(tBody);
+        }catch(_){
+          console.error(
+            'Invalid TTS response',
+            l
+          );
+          return;
+        }
+
+        if(tData.url){
+          audio[l]=tData.url;
+        }
+
+      }catch(error){
+        console.error(
+          'TTS generation error',
+          l,
+          error
+        );
+      }
+    })
+  );
+
   if(bch){
     await bch.publish(
       't',
@@ -488,6 +548,7 @@ if(activeLangs.length===0){
         orig:item.text,
         spk:item.spk.l,
         tr:res,
+        audio:audio,
         capturedAt:item.capturedAt,
         translatedAt:Date.now()
       }
