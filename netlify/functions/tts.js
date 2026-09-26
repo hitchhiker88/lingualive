@@ -1,15 +1,63 @@
+const { getStore } = require('@netlify/blobs');
+
 exports.handler = async function(event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, body: '' };
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
-
   try {
-    const { text, voiceId, seq, lang } =
-      JSON.parse(event.body || '{}');
+    const store = getStore({
+      name: 'lingua-live-audio',
+      consistency: 'strong'
+    });
+
+    // GET = audience retrieves already-generated audio
+    if (event.httpMethod === 'GET') {
+      const seq = event.queryStringParameters?.seq;
+      const lang = event.queryStringParameters?.lang;
+
+      if (!seq || !lang) {
+        return {
+          statusCode: 400,
+          body: 'Missing seq or lang'
+        };
+      }
+
+      const key = `${seq}-${lang}.mp3`;
+
+      const audio = await store.get(key, {
+        type: 'arrayBuffer',
+        consistency: 'strong'
+      });
+
+      if (!audio) {
+        return {
+          statusCode: 404,
+          body: 'Audio not found'
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=3600'
+        },
+        isBase64Encoded: true,
+        body: Buffer.from(audio).toString('base64')
+      };
+    }
+
+    // POST = host generates and stores audio
+    if (event.httpMethod !== 'POST') {
+      return {
+        statusCode: 405,
+        body: 'Method Not Allowed'
+      };
+    }
+
+    const {
+      text,
+      voiceId,
+      seq,
+      lang
+    } = JSON.parse(event.body || '{}');
 
     if (!text || !voiceId || seq === undefined || !lang) {
       return {
@@ -27,6 +75,31 @@ exports.handler = async function(event) {
         statusCode: 500,
         body: JSON.stringify({
           error: 'ELEVEN_KEY is not configured'
+        })
+      };
+    }
+
+    const key = `${seq}-${lang}.mp3`;
+
+    // If already generated, do not call ElevenLabs again.
+    const existing = await store.getMetadata(key, {
+      consistency: 'strong'
+    });
+
+    if (existing) {
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ok: true,
+          cached: true,
+          url:
+            '/.netlify/functions/tts?seq=' +
+            encodeURIComponent(seq) +
+            '&lang=' +
+            encodeURIComponent(lang)
         })
       };
     }
@@ -68,24 +141,34 @@ exports.handler = async function(event) {
       };
     }
 
-    const audioBuffer = Buffer.from(
-      await response.arrayBuffer()
+    const audio = await response.arrayBuffer();
+
+    await store.set(
+      key,
+      audio,
+      {
+        metadata: {
+          lang,
+          seq: String(seq),
+          createdAt: Date.now()
+        }
+      }
     );
 
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'audio/mpeg',
-
-        'Cache-Control':
-          'public, max-age=3600',
-
-        'Netlify-CDN-Cache-Control':
-          'public, durable, max-age=3600'
+        'Content-Type': 'application/json'
       },
-
-      isBase64Encoded: true,
-      body: audioBuffer.toString('base64')
+      body: JSON.stringify({
+        ok: true,
+        cached: false,
+        url:
+          '/.netlify/functions/tts?seq=' +
+          encodeURIComponent(seq) +
+          '&lang=' +
+          encodeURIComponent(lang)
+      })
     };
 
   } catch (error) {
