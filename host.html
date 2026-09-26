@@ -495,11 +495,12 @@ async function translateQueuedItem(item){
               'Content-Type':'application/json'
             },
             body:JSON.stringify({
-              text:res[l],
-              voiceId:VOICES[l],
-              seq:item.seq,
-              lang:l
-            })
+  text:res[l],
+  voiceId:VOICES[l],
+  session:sessionCode,
+  seq:item.seq,
+  lang:l
+})
           }
         );
 
