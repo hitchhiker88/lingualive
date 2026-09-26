@@ -5,7 +5,6 @@ exports.handler = async function(event) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ablyKey: process.env.ABLY_KEY || '',
-      elevenKey: process.env.ELEVEN_KEY || '',
       hostPassword: process.env.HOST_PASSWORD || ''
     })
   };
