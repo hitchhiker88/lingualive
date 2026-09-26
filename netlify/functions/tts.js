@@ -8,13 +8,14 @@ exports.handler = async function(event) {
   }
 
   try {
-    const { text, voiceId } = JSON.parse(event.body || '{}');
+    const { text, voiceId, seq, lang } =
+      JSON.parse(event.body || '{}');
 
-    if (!text || !voiceId) {
+    if (!text || !voiceId || seq === undefined || !lang) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: 'Missing text or voiceId'
+          error: 'Missing text, voiceId, seq or lang'
         })
       };
     }
@@ -73,10 +74,14 @@ exports.handler = async function(event) {
 
     return {
       statusCode: 200,
-
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=3600'
+
+        'Cache-Control':
+          'public, max-age=3600',
+
+        'Netlify-CDN-Cache-Control':
+          'public, durable, max-age=3600'
       },
 
       isBase64Encoded: true,
@@ -84,11 +89,7 @@ exports.handler = async function(event) {
     };
 
   } catch (error) {
-
-    console.error(
-      'TTS function error:',
-      error
-    );
+    console.error('TTS function error:', error);
 
     return {
       statusCode: 500,
