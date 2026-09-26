@@ -246,6 +246,8 @@ let scribeSdk=null;
 let scribePartialDiv=null;
 let scribeSegmentSpk=null;
 let scribeReady=false;
+let scribeCommitPending=false;
+let scribeCommitTimer=null;
 let ably=null,bch=null,pch=null,hist=[],spkIdx=0,lastSpk=Date.now();
 let lc={};Object.keys(LANGS).forEach(l=>lc[l]=0);
 let cfg={ablyKey:'',elevenKey:'',hostPassword:''};
@@ -908,28 +910,70 @@ function handleScribePartial(data){
   }
 
   if(!scribePartialDiv){
-
     scribePartialDiv=addEntry(
       scribeSegmentSpk,
       txt,
       true
     );
-
   }else{
-
     const textEl=
-      scribePartialDiv.querySelector(
-        '.etxt'
-      );
+      scribePartialDiv.querySelector('.etxt');
 
     if(textEl){
       textEl.textContent=txt;
     }
   }
+
+  const wordCount=
+    txt.split(/\s+/).filter(Boolean).length;
+
+  // Hard limit: commit at 12 words
+  if(
+    wordCount>=12 &&
+    !scribeCommitPending &&
+    scribeConn
+  ){
+    scribeCommitPending=true;
+
+    clearTimeout(scribeCommitTimer);
+
+    try{
+      scribeConn.commit();
+    }catch(e){
+      console.error('Scribe commit failed:',e);
+      scribeCommitPending=false;
+    }
+
+    return;
+  }
+
+  // Also commit after a short natural pause
+  clearTimeout(scribeCommitTimer);
+
+  scribeCommitTimer=setTimeout(()=>{
+    if(
+      !scribeCommitPending &&
+      scribeConn &&
+      txt.trim()
+    ){
+      scribeCommitPending=true;
+
+      try{
+        scribeConn.commit();
+      }catch(e){
+        console.error('Scribe pause commit failed:',e);
+        scribeCommitPending=false;
+      }
+    }
+  },650);
 }
 
 
 function handleScribeCommitted(data){
+  clearTimeout(scribeCommitTimer);
+  scribeCommitTimer=null;
+  scribeCommitPending=false;
+
   const txt=(data?.text||'')
     .replace(/\s+/g,' ')
     .trim();
@@ -995,15 +1039,7 @@ async function startRealtimeSTT(){
       languageCode:'en',
 
       commitStrategy:
-        CommitStrategy.VAD,
-
-      vadSilenceThresholdSecs:0.55,
-
-      vadThreshold:0.4,
-
-      minSpeechDurationMs:100,
-
-      minSilenceDurationMs:100,
+  CommitStrategy.MANUAL,
 
       noVerbatim:true,
 
